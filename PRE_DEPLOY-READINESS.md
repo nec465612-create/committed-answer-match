@@ -12,7 +12,7 @@
 | Status | `NOT REQUESTED / HOLD` |
 | Anonymous reviewer delivery | `NOT SENT — no retained reviewer route supplied` |
 | Studionet contract | Not deployed; no address or deployment transaction exists |
-| Studio account | Not yet selected and locked in a Studio session; no secret is recorded |
+| Studio account | Selected and locked for deployment role: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`; no secret is recorded |
 | GitHub/Vercel targets | Not supplied; no push or hosting release exists |
 
 This is a readiness package, not an approval, deployment record, live-test result, or release claim. No signature, contract write, deployment transaction, or Studio E2E action has been sent from this checkpoint.
@@ -176,8 +176,7 @@ The current exact-source package must satisfy these checkpoint rules before any 
 Current blockers are intentional and explicit:
 
 1. The user must explicitly confirm `INTENTIONALLY FROZEN` and the consequence that a post-deployment defect requires a new contract, or choose a different governed classification.
-2. The primary AI must select and record an accessible Studio deployer account and public address before the anonymous PRE_DEPLOY handoff; no account or secret has been guessed or recorded.
-3. The user must supply the retained anonymous reviewer route for the one required first-contact handoff. The complete package is not marked sent merely because this file or the prompt file exists.
-4. Contract address, deployment transaction, live receipts, Explorer/RPC readback, GitHub identity, Vercel team/project, and public release URL do not exist yet and are intentionally blank at this checkpoint.
+2. The user must supply the retained anonymous reviewer route for the one required first-contact handoff. The complete package is not marked sent merely because this file or the prompt file exists.
+3. Contract address, deployment transaction, live receipts, Explorer/RPC readback, GitHub identity, Vercel team/project, and public release URL do not exist yet and are intentionally blank at this checkpoint.
 
 Until these are resolved, do not deploy, sign, write, push, configure a public contract address, or claim `PRE_DEPLOY` approval.
