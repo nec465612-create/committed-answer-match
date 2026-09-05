@@ -190,10 +190,14 @@ function resolutionEvidence(classification: ResolutionEvidence["classification"]
   return { classification, detailJson: journalJson({ classification, ...details }) };
 }
 
-function journalStatusLabel(record: JournalRecord): string {
+export function journalStatusLabel(record: JournalRecord): string {
   if (record.status === "VERIFIED") return "Verified";
   if (record.status === "FINALIZED_ERROR") {
-    return resolutionClass(record) === "COMPETING" ? "Finalized; competing operation retained" : "Finalized with no state change";
+    const classification = resolutionClass(record);
+    if (classification === "PRESENT") return "Finalized; expected state present";
+    if (classification === "UNCHANGED") return "Finalized; state unchanged";
+    if (classification === "COMPETING") return "Finalized; competing operation retained";
+    return "Finalized; resolution unavailable";
   }
   if (record.status === "RECONCILE") {
     const classification = resolutionClass(record);
@@ -694,6 +698,7 @@ function EmptyAction({ text }: { text: string }) {
 
 function JournalPanel({ records, unknown, error, signingAvailable, busy, busyReservation, onRefresh, onReconcile }: { records: JournalRecord[]; unknown: UnknownJournalRecord[]; error: string; signingAvailable: boolean; busy: boolean; busyReservation: string | null; onRefresh: () => void; onReconcile: (record: JournalRecord) => void }) {
   const [copied, setCopied] = useState(false);
+  const [copiedHash, setCopiedHash] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   function exportJournal() {
     const blob = new Blob([JSON.stringify({ version: 1, records, unknown }, null, 2)], { type: "application/json" });
@@ -708,6 +713,11 @@ function JournalPanel({ records, unknown, error, signingAvailable, busy, busyRes
     await navigator.clipboard?.writeText(records.map((record) => `${operationLabel(record.method)} — ${journalStatusLabel(record)}`).join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
+  }
+  async function copyHash(hash: string) {
+    await navigator.clipboard?.writeText(hash);
+    setCopiedHash(hash);
+    setTimeout(() => setCopiedHash((current) => current === hash ? null : current), 1600);
   }
   const hasJournalData = records.length > 0 || unknown.length > 0;
   const pageSize = 4;
@@ -735,7 +745,7 @@ function JournalPanel({ records, unknown, error, signingAvailable, busy, busyRes
         <div className="journal-list">
           {visibleItems.map((item) => item.kind === "record" ? <div className="journal-row" key={item.key}>
             <div className="journal-row-icon"><ShieldCheck size={18} /></div>
-            <div className="journal-row-copy"><strong>{operationLabel(item.record.method)}</strong><span>{item.record.intent.startsWith("create:") ? "New public case" : "Case operation"}</span></div>
+            <div className="journal-row-copy"><strong>{operationLabel(item.record.method)}</strong><span>{item.record.intent.startsWith("create:") ? "New public case" : "Case operation"}</span>{item.record.tx_hash && <div className="journal-row-hash"><span>Transaction hash</span><code>{item.record.tx_hash}</code><div className="journal-row-hash-actions"><button className="journal-inline-action" type="button" aria-label={`Copy transaction hash for ${operationLabel(item.record.method)}`} onClick={() => void copyHash(item.record.tx_hash)}>{copiedHash === item.record.tx_hash ? <><Check size={14} /> Copied</> : <><Copy size={14} /> Copy</>}</button>{explorerTransactionUrl(item.record.tx_hash) && <a className="journal-inline-action" href={explorerTransactionUrl(item.record.tx_hash)} target="_blank" rel="noreferrer" aria-label={`Open transaction in Explorer for ${operationLabel(item.record.method)}`}><ExternalLink size={14} /> Explorer</a>}</div></div>}</div>
             <span className={`journal-status journal-${item.record.status.toLowerCase()}`}>{journalStatusLabel(item.record)}</span>
             {["SIGNING", "SUBMITTED", "RECONCILE"].includes(item.record.status) && <button className="icon-button" type="button" aria-label={`Reconcile ${operationLabel(item.record.method)}`} onClick={() => onReconcile(item.record)} disabled={busy || busyReservation !== null}>{busyReservation === item.record.reservation ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}</button>}
           </div> : <div className="journal-row" key={item.key}>
@@ -974,7 +984,6 @@ export default function App() {
         setNotice({ tone: "error", text: "The attempt needs reconciliation. It remains in the journal; no second transaction was sent." });
       }
     } catch (error) {
-      setTransactionProgress((current) => current.phase === "IDLE" ? { phase: "FAILED", message: friendlyError(error) } : current);
       setNotice({ tone: "error", text: friendlyError(error) });
     } finally {
       setWriteBusy(false);
@@ -1075,7 +1084,6 @@ export default function App() {
         setNotice({ tone: "error", text: "The attempt needs reconciliation. It remains in the journal; no second transaction was sent." });
       }
     } catch (error) {
-      setTransactionProgress((current) => current.phase === "IDLE" ? { phase: "FAILED", message: friendlyError(error) } : current);
       setNotice({ tone: "error", text: friendlyError(error) });
     } finally {
       setWriteBusy(false);
@@ -1308,7 +1316,6 @@ export default function App() {
         setNotice({ tone: "info", text: "The retained operation is still not conclusively verified. It remains in the journal; no second transaction was sent." });
       }
     } catch (error) {
-      setTransactionProgress((current) => current.phase === "IDLE" ? { phase: "FAILED", message: friendlyError(error) } : current);
       setNotice({ tone: "error", text: friendlyError(error) });
     } finally {
       setReconcileBusy(null);

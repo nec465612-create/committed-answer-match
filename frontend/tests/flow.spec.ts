@@ -99,6 +99,50 @@ test("renders every valid journal record and preserves malformed raw export", as
   await expect(page.getByRole("button", { name: "Export" })).toBeEnabled();
 });
 
+test("keeps a submitted hash and safe reconciliation visible after reload", async ({ page }) => {
+  const hash = "0x" + "d".repeat(64);
+  await page.addInitScript((txHash) => {
+    const reservation = "f".repeat(32);
+    const record = {
+      v: 1,
+      reservation,
+      chain: "61999",
+      contract: "0x1111111111111111111111111111111111111111",
+      account: "0x2222222222222222222222222222222222222222",
+      method: "evaluate_match",
+      intent: "evaluate_match:1:3",
+      args_json: "[\"1\",\"3\"]",
+      pre_revision: "3",
+      pre_hash: "a".repeat(64),
+      pre_state_json: "",
+      tx_hash: txHash,
+      status: "SUBMITTED",
+      created_ms: "1",
+      resolution_json: "{}",
+    };
+    localStorage.setItem(`glj1:${reservation}`, JSON.stringify(record));
+    (window as Window & { __walletCalls?: string[] }).__walletCalls = [];
+  }, hash);
+
+  await page.goto("/");
+  await page.getByRole("button", { name: "Journal", exact: true }).click();
+  const row = page.locator(".journal-row").filter({ hasText: "Awaiting finality" });
+  await expect(row).toHaveCount(1);
+  await expect(row).toContainText(hash);
+  await expect(row.getByRole("button", { name: "Copy transaction hash for Evaluate match" })).toBeVisible();
+  await expect(row.getByRole("link", { name: "Open transaction in Explorer for Evaluate match" })).toHaveAttribute("href", `https://explorer-studio.genlayer.com/tx/${hash}`);
+  await expect(row.getByRole("button", { name: "Reconcile Evaluate match" })).toBeVisible();
+  expect(await page.evaluate(() => (window as Window & { __walletCalls?: string[] }).__walletCalls)).toEqual([]);
+
+  await page.reload();
+  await page.getByRole("button", { name: "Journal", exact: true }).click();
+  const reloadedRow = page.locator(".journal-row").filter({ hasText: "Awaiting finality" });
+  await expect(reloadedRow).toContainText(hash);
+  await expect(reloadedRow.getByRole("button", { name: "Copy transaction hash for Evaluate match" })).toBeVisible();
+  await expect(reloadedRow.getByRole("button", { name: "Reconcile Evaluate match" })).toBeVisible();
+  expect(await page.evaluate(() => (window as Window & { __walletCalls?: string[] }).__walletCalls)).toEqual([]);
+});
+
 test("shows an empty picker without fake wallet options and restores focus on Escape", async ({ page }) => {
   await page.goto("/");
   const connect = page.getByRole("button", { name: /connect wallet/i });

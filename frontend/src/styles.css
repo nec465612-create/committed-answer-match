@@ -144,12 +144,18 @@ a { color: inherit; }
 .journal-heading p { color: var(--muted); font-size: 13px; margin: 8px 0 0; }
 .journal-actions { display: flex; gap: 8px; align-items: center; }
 .journal-list { margin-top: 24px; border: 1px solid var(--line); border-radius: 13px; overflow: hidden; background: #fff; }
-.journal-row { display: flex; align-items: center; gap: 13px; padding: 15px 17px; border-bottom: 1px solid #edf0f1; }
+.journal-row { display: flex; align-items: flex-start; gap: 13px; padding: 15px 17px; border-bottom: 1px solid #edf0f1; }
 .journal-row:last-child { border-bottom: 0; }
 .journal-row-icon { display: grid; place-items: center; width: 31px; height: 31px; border-radius: 9px; background: var(--green-pale); color: var(--green); flex: 0 0 auto; }
-.journal-row-copy { display: flex; flex-direction: column; gap: 4px; margin-right: auto; }
+.journal-row-copy { display: flex; min-width: 0; flex-direction: column; gap: 4px; margin-right: auto; }
 .journal-row-copy strong { font-size: 13px; }
 .journal-row-copy span { color: var(--muted); font-size: 11px; }
+.journal-row-hash { display: grid; gap: 5px; margin-top: 4px; }
+.journal-row-hash > span { color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: 0.08em; text-transform: uppercase; }
+.journal-row-hash code { max-width: 100%; overflow-wrap: anywhere; color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 10px; line-height: 1.5; }
+.journal-row-hash-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.journal-inline-action { display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); border-radius: 7px; padding: 5px 7px; color: var(--ink); background: #fff; font-size: 10px; font-weight: 750; text-decoration: none; }
+.journal-inline-action:hover { border-color: #a9b7c1; background: #fbfcfb; }
 .journal-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; color: var(--muted); font-size: 12px; }
 .journal-status { font-size: 10px; font-weight: 800; color: var(--muted); }
 .journal-verified { color: var(--green); }

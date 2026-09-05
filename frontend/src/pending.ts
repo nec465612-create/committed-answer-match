@@ -161,9 +161,137 @@ export function canonicalJson(value: unknown): string {
   return JSON.stringify(canonicalValue(value));
 }
 
+function parseJsonRejectingDuplicateKeys(input: string): unknown {
+  let offset = 0;
+
+  function syntaxError(message: string): never {
+    throw new Error(`Invalid journal JSON: ${message}`);
+  }
+
+  function skipWhitespace(): void {
+    while (offset < input.length && /[\u0009\u000a\u000d\u0020]/.test(input[offset] ?? "")) offset += 1;
+  }
+
+  function parseString(): string {
+    if (input[offset] !== '"') syntaxError("expected a string.");
+    const start = offset;
+    offset += 1;
+    while (offset < input.length) {
+      const code = input.charCodeAt(offset);
+      if (code === 0x22) {
+        offset += 1;
+        try {
+          return JSON.parse(input.slice(start, offset)) as string;
+        } catch {
+          syntaxError("invalid string.");
+        }
+      }
+      if (code === 0x5c) {
+        offset += 1;
+        const escape = input[offset];
+        if (escape === "u") {
+          if (!/^[0-9a-fA-F]{4}$/.test(input.slice(offset + 1, offset + 5))) syntaxError("invalid unicode escape.");
+          offset += 5;
+        } else if (escape !== undefined && '"\\/bfnrt'.includes(escape)) {
+          offset += 1;
+        } else {
+          syntaxError("invalid escape.");
+        }
+        continue;
+      }
+      if (code < 0x20) syntaxError("unescaped control character.");
+      offset += 1;
+    }
+    syntaxError("unterminated string.");
+  }
+
+  function parseNumber(): number {
+    const match = input.slice(offset).match(/^-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/);
+    if (!match) syntaxError("invalid number.");
+    offset += match[0].length;
+    return Number(match[0]);
+  }
+
+  function parseValue(): unknown {
+    skipWhitespace();
+    const token = input[offset];
+    if (token === "{") return parseObject();
+    if (token === "[") return parseArray();
+    if (token === '"') return parseString();
+    if (token === "-" || (token !== undefined && token >= "0" && token <= "9")) return parseNumber();
+    if (input.startsWith("true", offset)) {
+      offset += 4;
+      return true;
+    }
+    if (input.startsWith("false", offset)) {
+      offset += 5;
+      return false;
+    }
+    if (input.startsWith("null", offset)) {
+      offset += 4;
+      return null;
+    }
+    syntaxError("unexpected token.");
+  }
+
+  function parseArray(): unknown[] {
+    offset += 1;
+    const result: unknown[] = [];
+    skipWhitespace();
+    if (input[offset] === "]") {
+      offset += 1;
+      return result;
+    }
+    while (true) {
+      result.push(parseValue());
+      skipWhitespace();
+      if (input[offset] === "]") {
+        offset += 1;
+        return result;
+      }
+      if (input[offset] !== ",") syntaxError("expected an array separator.");
+      offset += 1;
+      skipWhitespace();
+    }
+  }
+
+  function parseObject(): Record<string, unknown> {
+    offset += 1;
+    const result: Record<string, unknown> = Object.create(null) as Record<string, unknown>;
+    const keys = new Set<string>();
+    skipWhitespace();
+    if (input[offset] === "}") {
+      offset += 1;
+      return result;
+    }
+    while (true) {
+      const key = parseString();
+      if (keys.has(key)) syntaxError(`duplicate object key ${key}.`);
+      keys.add(key);
+      skipWhitespace();
+      if (input[offset] !== ":") syntaxError("expected an object separator.");
+      offset += 1;
+      result[key] = parseValue();
+      skipWhitespace();
+      if (input[offset] === "}") {
+        offset += 1;
+        return result;
+      }
+      if (input[offset] !== ",") syntaxError("expected an object separator.");
+      offset += 1;
+      skipWhitespace();
+    }
+  }
+
+  const parsed = parseValue();
+  skipWhitespace();
+  if (offset !== input.length) syntaxError("trailing data.");
+  return parsed;
+}
+
 function parseCanonicalJson(value: string): void {
   try {
-    const parsed = JSON.parse(value) as unknown;
+    const parsed = parseJsonRejectingDuplicateKeys(value);
     if (canonicalJson(parsed) !== value) fail("Journal arguments must be canonical JSON.");
   } catch (error) {
     if (error instanceof JournalError) throw error;
@@ -175,25 +303,27 @@ export function journalKey(reservation: string): string {
   return JOURNAL_PREFIX + reservation;
 }
 
+const JOURNAL_RECORD_FIELDS = [
+  "v",
+  "reservation",
+  "chain",
+  "contract",
+  "account",
+  "method",
+  "intent",
+  "args_json",
+  "pre_revision",
+  "pre_hash",
+  "pre_state_json",
+  "tx_hash",
+  "status",
+  "created_ms",
+  "resolution_json",
+] as const;
+
 export function validateJournalRecord(key: string, value: unknown): JournalRecord {
   if (!isObject(value)) fail("Journal record is not an object.");
-  const legacyFields = [
-    "v",
-    "reservation",
-    "chain",
-    "contract",
-    "account",
-    "method",
-    "intent",
-    "args_json",
-    "pre_revision",
-    "pre_hash",
-    "tx_hash",
-    "status",
-    "created_ms",
-  ] as const;
-  const fields = [...legacyFields, "pre_state_json", "resolution_json"] as const;
-  if (!exactKeys(value, legacyFields) && !exactKeys(value, fields)) fail("Journal record has unexpected fields.");
+  if (!exactKeys(value, JOURNAL_RECORD_FIELDS)) fail("Journal record has unexpected fields.");
   if (value.v !== 1) fail("Unsupported journal version.");
   const reservation = hex(value.reservation, 32);
   if (key !== journalKey(reservation)) fail("Journal key does not match its reservation.");
@@ -206,7 +336,7 @@ export function validateJournalRecord(key: string, value: unknown): JournalRecor
   parseCanonicalJson(argsJson);
   const preRevision = decimal(value.pre_revision);
   const preHash = hex(value.pre_hash, 64);
-  const preStateJson = textAllowEmpty(value.pre_state_json ?? "", 24576);
+  const preStateJson = textAllowEmpty(value.pre_state_json, 24576);
   if (preStateJson !== "") parseCanonicalJson(preStateJson);
   const txHash = value.tx_hash;
   if (typeof txHash !== "string" || (txHash !== "" && !/^0x[0-9a-f]{64}$/.test(txHash))) {
@@ -214,7 +344,7 @@ export function validateJournalRecord(key: string, value: unknown): JournalRecor
   }
   const recordStatus = status(value.status);
   const createdMs = decimal(value.created_ms);
-  const resolutionJson = textAllowEmpty(value.resolution_json ?? "{}", 8192);
+  const resolutionJson = textAllowEmpty(value.resolution_json, 8192);
   if (resolutionJson === "") fail("Invalid journal resolution.");
   parseCanonicalJson(resolutionJson);
   return {
@@ -297,7 +427,7 @@ const UNRESOLVED_RESOLUTION_CLASSES = ["ABSENT", "UNKNOWN"] as const;
 
 function resolutionClass(value: string): string | null {
   try {
-    const parsed = JSON.parse(value) as unknown;
+    const parsed = parseJsonRejectingDuplicateKeys(value) as unknown;
     if (!isObject(parsed) || typeof parsed.classification !== "string") return null;
     return parsed.classification;
   } catch {
@@ -523,7 +653,7 @@ export class DurableJournal {
           continue;
         }
         try {
-          records.push(validateJournalRecord(key, JSON.parse(raw) as unknown));
+          records.push(validateJournalRecord(key, parseJsonRejectingDuplicateKeys(raw)));
         } catch (error) {
           unknown.push({
             key,

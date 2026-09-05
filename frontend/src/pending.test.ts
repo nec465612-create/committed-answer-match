@@ -97,7 +97,7 @@ describe("DurableJournal", () => {
     await expect(journal.createSigning(input(2))).rejects.toMatchObject({ kind: "data" });
   });
 
-  it("reads legacy records while normalizing the new recovery fields", async () => {
+  it("quarantines records outside the approved effective schema", async () => {
     const storage = new MemoryStorage();
     const journal = new DurableJournal(storage, new ImmediateLocks());
     const record = await journal.createSigning(input(1));
@@ -107,8 +107,38 @@ describe("DurableJournal", () => {
     storage.setItem(journalKey(record.reservation), JSON.stringify(legacy));
 
     const snapshot = await journal.snapshot();
-    expect(snapshot.unknown).toEqual([]);
-    expect(snapshot.records[0]).toMatchObject({ pre_state_json: "", resolution_json: "{}" });
+    expect(snapshot.records).toEqual([]);
+    expect(snapshot.unknown).toEqual([{ key: journalKey(record.reservation), raw: JSON.stringify(legacy), error: expect.any(String) }]);
+    await expect(journal.createSigning(input(2))).rejects.toMatchObject({ kind: "data" });
+  });
+
+  it("quarantines duplicate keys at the outer journal-record level", async () => {
+    const storage = new MemoryStorage();
+    const journal = new DurableJournal(storage, new ImmediateLocks());
+    const record = await journal.createSigning(input(1));
+    const key = journalKey(record.reservation);
+    const raw = JSON.stringify(record).replace('"tx_hash":"","status"', '"tx_hash":"","tx_hash":"","status"');
+    storage.setItem(key, raw);
+
+    const snapshot = await journal.snapshot();
+    expect(snapshot.records).toEqual([]);
+    expect(snapshot.unknown).toEqual([{ key, raw, error: expect.stringContaining("duplicate") }]);
+    await expect(journal.createSigning(input(2))).rejects.toMatchObject({ kind: "data" });
+  });
+
+  it("quarantines duplicate keys inside canonical nested journal JSON", async () => {
+    const storage = new MemoryStorage();
+    const journal = new DurableJournal(storage, new ImmediateLocks());
+    const record = await journal.createSigning(input(1));
+    const key = journalKey(record.reservation);
+    const nested = { ...record, args_json: '{"answer":"one","answer":"two"}' };
+    const raw = JSON.stringify(nested);
+    storage.setItem(key, raw);
+
+    const snapshot = await journal.snapshot();
+    expect(snapshot.records).toEqual([]);
+    expect(snapshot.unknown).toEqual([{ key, raw, error: expect.any(String) }]);
+    await expect(journal.createSigning(input(2))).rejects.toMatchObject({ kind: "data" });
   });
 
   it("blocks a second pending write for the same case even with another account or method", async () => {

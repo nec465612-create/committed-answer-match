@@ -351,9 +351,11 @@ describe("executeWrite", () => {
   it("does not call the wallet when the journal lock is unavailable", async () => {
     const journal = new DurableJournal(new MemoryStorage(), null);
     let submitCalls = 0;
+    const phases: string[] = [];
     await expect(
-      executeWrite(plan({ submit: async () => { submitCalls += 1; return "0x" + "c".repeat(64); } }), { journal }),
+      executeWrite(plan({ submit: async () => { submitCalls += 1; return "0x" + "c".repeat(64); }, progress: ({ phase }) => phases.push(phase) }), { journal }),
     ).rejects.toMatchObject({ kind: "lock" });
     expect(submitCalls).toBe(0);
+    expect(phases).toEqual([]);
   });
 });
