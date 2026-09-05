@@ -8,6 +8,7 @@ import {
 import type {
   Address as GenLayerAddress,
   CalldataEncodable,
+  Hash as GenLayerHash,
 } from "genlayer-js/types";
 import type { ConnectedWallet } from "./wallet/connection";
 import type { Eip1193Provider } from "./wallet/providers";
@@ -426,15 +427,14 @@ export function parseTransactionReceipt(raw: unknown): ContractReceipt | null {
 }
 
 async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, hash: string, signal?: AbortSignal): Promise<ContractReceipt | null> {
-  const request = client.request as unknown as RpcRequest;
   const receipt = await readRpcBudget.request({
     rowId: "terminal-receipt",
     key: hash,
     signal: signal ?? new AbortController().signal,
-    // This deployed legacy Studionet node has no gen_getTransactionReceipt
-    // method; the pinned SDK's compatible read surface is the Ethereum-shaped
-    // transaction lookup below.
-    call: () => request({ method: "eth_getTransactionByHash", params: [hash] }),
+    // The deployed legacy node has no gen_getTransactionReceipt method. The
+    // pinned SDK normalizes its compatible eth_getTransactionByHash response
+    // into the GenLayer transaction shape we need for execution verification.
+    call: () => client.getTransaction({ hash: hash as GenLayerHash }),
   });
   return parseTransactionReceipt(receipt);
 }
