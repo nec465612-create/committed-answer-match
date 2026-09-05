@@ -7,6 +7,7 @@ reproducible local checks for the current release candidate.
 
 ```text
 PACKAGE_COMMIT: ff2f2ad4a4c8d2995a5efeae57cb8bf2e06b3ad5
+PUBLIC_REPOSITORY_HEAD: bf87ebd57371d66e817b2c7c1465cd33778e2116
 CONTRACT_SOURCE_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
 CONTRACT_SOURCE_SHA256: 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
 CONTRACT_TEST_SHA256: DEFC83A938E0CABCD8EECFCA8B7D199AB49901B8C5F6B511965ECF7E02E0FB9C
@@ -20,7 +21,10 @@ DEPLOYMENT_RESULT: SUCCESS; consensus Accepted
 INITIAL_COUNT: 0
 LIFECYCLE: INTENTIONALLY FROZEN
 POST_DEPLOY_DEFECT_POLICY: deploy a new contract and update the frontend address; never upgrade this address
-HOSTED_FRONTEND: not released yet
+VERCEL_PROJECT: nec10/frontend
+VERCEL_DEPLOYMENT_ID: dpl_Bmyd5JQMkjrrnDZfGcEuP5nTTyZp
+VERCEL_DEPLOYMENT_STATUS: READY
+HOSTED_FRONTEND: https://frontend-psi-kohl-42.vercel.app
 ```
 
 - [Contract in the Studionet Explorer](https://explorer-studio.genlayer.com/address/0xD22f951BD5B7AE6615c27066e99a80D9751be5cF)
@@ -39,6 +43,11 @@ Studio request telemetry did not expose a recoverable physical-request count
 for the retained run, so no physical count is claimed. Logical actions,
 transaction hashes, bounded status observations, terminal receipts and
 authoritative readbacks are recorded in the project RPC evidence.
+
+The hosted frontend was deployed from the reviewed frontend source to
+`nec10/frontend`. The deployment is `READY` and responds with HTTP 200 at the
+production alias above. Exact-release browser RPC measurements remain pending
+the hosted frontend E2E gate.
 
 ## Reproducible checks
 

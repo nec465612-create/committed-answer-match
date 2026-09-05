@@ -12,8 +12,9 @@ The exact reviewed replacement is deployed on Studionet at
 `0xD22f951BD5B7AE6615c27066e99a80D9751be5cF`. Verified live evidence covers
 the successful match, no-match, rejection, ambiguity and expiry journeys.
 Physical hosted-UI request counting is not claimed because the retained Studio
-binding exposes no physical counter. The hosted frontend release is still
-pending; deployment and source parity are summarized in
+binding exposes no physical counter. The hosted frontend is available at
+[frontend-psi-kohl-42.vercel.app](https://frontend-psi-kohl-42.vercel.app);
+deployment and source parity are summarized in
 [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
 
 ## Case lifecycle
@@ -122,8 +123,8 @@ does not verify external facts.
   and bounds retries rather than inventing a result.
 - The current contract is intentionally frozen. A confirmed post-deployment
   contract defect requires a new contract and fresh evidence.
-- The public frontend URL and exact-release browser RPC measurements are added
-  only after the GitHub/Vercel release is authorized and completed.
+- Exact-release browser RPC measurements are not claimed until the hosted
+  frontend E2E gate is completed.
 
 ## GenLayer references
 
