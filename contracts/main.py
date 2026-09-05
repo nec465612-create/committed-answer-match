@@ -104,6 +104,8 @@ def _address(value):
         candidate = "0x" + value.hex()
     elif hasattr(value, "as_bytes"):
         candidate = "0x" + bytes(value.as_bytes).hex()
+    elif isinstance(value, int) and not isinstance(value, bool) and 0 <= value < (1 << 160):
+        candidate = f"0x{value:040x}"
     else:
         candidate = str(value).lower()
     if re.fullmatch(r"0x[0-9a-f]{40}", candidate) is None:

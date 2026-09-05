@@ -1,5 +1,6 @@
 import hashlib
 import json
+import sys
 
 import cloudpickle
 import pytest
@@ -80,6 +81,16 @@ def test_create_is_idempotent_and_binds_context(direct_vm, direct_deploy, direct
     with direct_vm.expect_revert("NONCE_CONFLICT"):
         contract.create_match(data["nonce"], direct_bob, "A different clue", data["commitment"])
     assert read_case(contract, 1) == first
+
+
+def test_address_normalizes_studio_integer_form(direct_vm, direct_deploy):
+    contract = deploy(direct_vm, direct_deploy)
+    instance = object.__getattribute__(contract, "_instance")
+    normalize = sys.modules[instance.__class__.__module__]._address
+
+    assert normalize(int("ef5d2119416a2f5afa35dcfa209766efc1be5902", 16)) == "0xef5d2119416a2f5afa35dcfa209766efc1be5902"
+    with pytest.raises(Exception, match="BAD_ADDRESS"):
+        normalize(1 << 160)
 
 
 def test_guess_reveal_and_digest_failure_are_atomic(direct_vm, direct_deploy, direct_alice, direct_bob):
