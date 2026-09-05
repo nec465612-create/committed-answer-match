@@ -115,9 +115,13 @@ function friendlyError(error: unknown): string {
   return "The operation could not be completed. No new attempt was started automatically.";
 }
 
-function walletIcon(id: WalletId, size = 42) {
-  if (id === "okx") return <SiOkx size={size} aria-hidden color="#111827" />;
-  if (id === "metamask") {
+function walletIcon(wallet: WalletCandidate, size = 42) {
+  const source = wallet.info?.icon.trim();
+  if (source && /^data:image\//i.test(source)) {
+    return <img className="wallet-icon" src={source} width={size} height={size} alt="" aria-hidden="true" />;
+  }
+  if (wallet.id === "okx") return <SiOkx size={size} aria-hidden color="#111827" />;
+  if (wallet.id === "metamask") {
     return <svg className="wallet-svg" width={size} height={size} viewBox="0 0 48 48" aria-hidden="true"><path fill="#e27625" d="m24 5 15 7-4 25-11 7-11-7-4-25 15-7Z" /><path fill="#f3b44d" d="m24 5-7 15 7 5 7-5-7-15Zm-11 7 4 8 7 5v4l-11-6-2-11Zm22 0-4 8-7 5v4l11-6 2-11Z" /><path fill="#d25b2b" d="m13 37 11 7V30l-7-4-4 11Zm22 0-11 7V30l7-4 4 11Z" /><path fill="#fff" d="m18 26 6 4 6-4-2-3-4 2-4-2-2 3Z" /></svg>;
   }
   return <svg className="wallet-svg" width={size} height={size} viewBox="0 0 48 48" aria-hidden="true"><path fill="#7c83ff" d="M12 20c-1-7 1-12 5-15l5 9c1-1 3-1 4 0l5-9c4 3 6 8 5 15 3 3 4 8 2 13-2 6-7 10-12 10s-10-4-12-10c-2-5-1-10 2-13Z" /><path fill="#fff" d="M17 22c2-2 4-2 7 0-1 3-2 4-4 4s-3-1-3-4Zm14 0c-2-2-4-2-7 0 1 3 2 4 4 4s3-1 3-4Zm-10 8h6c-1 3-2 4-3 4s-2-1-3-4Z" /></svg>;
@@ -310,7 +314,7 @@ function WalletPicker({
               disabled={busyId !== null}
               onClick={() => onSelect(wallet)}
             >
-              <span className="wallet-mark">{walletIcon(wallet.id)}</span>
+              <span className="wallet-mark">{walletIcon(wallet)}</span>
               <span className="wallet-option-name">{wallet.name}</span>
               {busyId === wallet.id ? <LoaderCircle className="spin" size={21} /> : <ArrowRight size={21} />}
             </button>

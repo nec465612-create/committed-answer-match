@@ -105,12 +105,34 @@ describe("WalletRegistry", () => {
     registry.destroy();
   });
 
+  it("does not promote an aggregate injector to MetaMask when a provider collection exists", () => {
+    const okx = provider({ isOKX: true });
+    const aggregate = provider({ isMetaMask: true });
+    const host = new EventTarget() as EventTarget & { ethereum?: unknown };
+    host.ethereum = { providers: [okx], ...aggregate };
+
+    const registry = new WalletRegistry(host as unknown as DiscoveryHost);
+    expect(registry.getWallets().map((wallet) => wallet.id)).toEqual(["okx"]);
+    expect(registry.getWallets()[0].provider).toBe(okx);
+    registry.destroy();
+  });
+
+  it("treats an explicit OKX legacy signal as stronger than MetaMask compatibility", () => {
+    const okx = provider({ isOKX: true, isMetaMask: true });
+    const host = new EventTarget() as EventTarget & { ethereum?: unknown };
+    host.ethereum = okx;
+
+    const registry = new WalletRegistry(host as unknown as DiscoveryHost);
+    expect(registry.getWallets().map((wallet) => wallet.id)).toEqual(["okx"]);
+    registry.destroy();
+  });
+
   it("hides conflicting EIP-6963 identity and conflicting legacy flags", () => {
     const conflictingAnnouncement = {
       info: { uuid: "conflict-eip", name: "Rabby", icon: "data:", rdns: "io.metamask" },
       provider: provider(),
     };
-    const conflictingLegacy = provider({ isMetaMask: true, isRabby: true });
+    const conflictingLegacy = provider({ isOKX: true, isRabby: true });
     const host = hostWithAnnouncements([conflictingAnnouncement]) as DiscoveryHost & { ethereum: unknown };
     host.ethereum = { providers: [conflictingLegacy] };
 

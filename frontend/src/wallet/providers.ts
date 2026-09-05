@@ -76,13 +76,12 @@ function uniqueWallet(ids: Array<WalletId | null>): WalletId | null {
 
 function classifyFlags(provider: Eip1193Provider): WalletId[] {
   const flags = provider as Record<string, unknown>;
-  const ids: WalletId[] = [];
-  if (flags.isRabby === true) ids.push("rabby");
-  if (flags.isOkx === true || flags.isOKX === true || flags.isOKEx === true || flags.isOkxWallet === true || flags.isOKExWallet === true) {
-    ids.push("okx");
-  }
-  if (flags.isMetaMask === true) ids.push("metamask");
-  return ids;
+  const isRabby = flags.isRabby === true;
+  const isOkx = flags.isOkx === true || flags.isOKX === true || flags.isOKEx === true || flags.isOkxWallet === true || flags.isOKExWallet === true;
+  if (isRabby && isOkx) return [];
+  if (isRabby) return ["rabby"];
+  if (isOkx) return ["okx"];
+  return flags.isMetaMask === true ? ["metamask"] : [];
 }
 
 function classifyAnnouncement(info: Partial<Eip6963Info> | undefined): WalletId | null {
@@ -106,7 +105,7 @@ function readLegacyProviders(host: DiscoveryHost): Eip1193Provider[] {
   const providers = isObject(injected) && Array.isArray(injected["providers"]) ? injected["providers"] : [];
   const candidates = [
     ...providers,
-    ...(isObject(injected) ? [injected] : []),
+    ...(providers.length === 0 && isObject(injected) ? [injected] : []),
     host["okxwallet"],
     host["rabby"],
     host["metamask"],
