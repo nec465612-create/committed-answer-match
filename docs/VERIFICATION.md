@@ -6,7 +6,7 @@ reproducible local checks for the current release candidate.
 ## Release binding
 
 ```text
-PACKAGE_COMMIT: ff2f2ad4a4c8d2995a5efeae57cb8bf2e06b3ad5
+PACKAGE_COMMIT: 1233c0f2e3c90a3cea8fd6b5afb8418ca228ceba
 PUBLIC_REPOSITORY_HEAD: 1233c0f2e3c90a3cea8fd6b5afb8418ca228ceba
 CONTRACT_SOURCE_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
 CONTRACT_SOURCE_SHA256: 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
@@ -22,7 +22,6 @@ INITIAL_COUNT: 0
 LIFECYCLE: INTENTIONALLY FROZEN
 POST_DEPLOY_DEFECT_POLICY: deploy a new contract and update the frontend address; never upgrade this address
 VERCEL_PROJECT: nec10/frontend
-VERCEL_DEPLOYMENT_ID: dpl_5cUPSphbaUgw5QgnMMW69YDchBVe
 VERCEL_DEPLOYMENT_STATUS: READY
 HOSTED_FRONTEND: https://frontend-psi-kohl-42.vercel.app
 ```
@@ -46,7 +45,8 @@ authoritative readbacks are recorded in the project RPC evidence.
 
 The hosted frontend was deployed from the reviewed frontend source to
 `nec10/frontend`. The deployment is `READY` and responds with HTTP 200 at the
-production alias above. The hosted E2E gate passed with the existing retained
+production alias above. The exact production browser trace is recorded in
+`docs/RPC-BUDGET.md`. The hosted E2E gate passed with the existing retained
 transaction `0x76d17bdb55bd05f81e67be95569b245f3871ba8958e2fdbfe3af7e2d8dd30fd5`:
 same-hash reconciliation verified `Case #5`, revision `1`, and the journal
 became `Verified`; no second transaction was sent. The wallet picker exposed

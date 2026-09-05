@@ -11,8 +11,9 @@ Committed Answer Match is a small GenLayer application for recording whether an 
 The exact reviewed replacement is deployed on Studionet at
 `0xD22f951BD5B7AE6615c27066e99a80D9751be5cF`. Verified live evidence covers
 the successful match, no-match, rejection, ambiguity and expiry journeys.
-Physical hosted-UI request counting is not claimed because the retained Studio
-binding exposes no physical counter. The hosted frontend is available at
+Physical Studio RPC counting is not claimed because the retained Studio
+binding exposes no physical counter; the production frontend request trace is
+measured separately. The hosted frontend is available at
 [frontend-psi-kohl-42.vercel.app](https://frontend-psi-kohl-42.vercel.app);
 deployment and source parity are summarized in
 [`docs/VERIFICATION.md`](docs/VERIFICATION.md).
@@ -123,8 +124,9 @@ does not verify external facts.
   and bounds retries rather than inventing a result.
 - The current contract is intentionally frozen. A confirmed post-deployment
   contract defect requires a new contract and fresh evidence.
-- Physical hosted-UI RPC counts are not claimed because the retained Studio
-  binding exposes no recoverable counter; the hosted same-hash E2E gate passed.
+- Physical Studio RPC counts are not claimed because the retained Studio
+  binding exposes no recoverable counter. The production frontend request
+  trace and hosted same-hash E2E evidence are recorded in the release package.
 
 ## GenLayer references
 
