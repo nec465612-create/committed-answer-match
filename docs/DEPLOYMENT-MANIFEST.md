@@ -1,6 +1,6 @@
 # Committed Answer Match — Replacement Deployment Manifest
 
-`MANIFEST_STATUS: REPLACEMENT_DEPLOYED — POST_DEPLOY_RECHECK_PENDING`
+`MANIFEST_STATUS: REPLACEMENT_DEPLOYED — POST_DEPLOY_TEST_APPROVED`
 
 This secret-free manifest is the deployment/recovery binding for the exact
 reviewed source. It is not a deployment receipt and contains no private key,
@@ -89,8 +89,9 @@ POST_DEPLOY_STUDIO_E2E_REMAINING: NONE — logical S00-S08 journeys complete; re
 STUDIO_MEASUREMENT_MODE: OBSERVABLE_ACTION_LEDGER
 STUDIO_MEASUREMENT_TIMING: RETROSPECTIVE_LEGACY
 PHYSICAL_STUDIO_REQUEST_COUNT: NONE CLAIMED — physical telemetry unavailable
-POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW RECHECK REQUESTED - POST_DEPLOY_TEST
-POST_DEPLOY_REVIEW_RESIDUAL: Frontend P1 repair recheck pending — PD-010 pre-aborted RPC guard; PD-006/PD-007/PD-008/PD-009 repaired locally; Studio ledger remains accepted from the prior exact package
+POST_DEPLOY_REVIEWED_HEAD: ff2f2ad4a4c8d2995a5efeae57cb8bf2e06b3ad5
+POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST
+POST_DEPLOY_REVIEW_RESIDUAL: NONE — PD-006 through PD-010 closed; exact-release frontend evidence remains for POST_GITHUB_VERCEL_FINAL
 ```
 
 The two intermediate replacement candidates are rejected and must not be
