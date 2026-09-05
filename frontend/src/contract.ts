@@ -55,17 +55,85 @@ export interface ContractReceipt {
   txExecutionResultName?: string;
   hash?: string;
   txId?: string;
+  returnedCaseId?: string;
 }
 
 export interface ContractWriteAdapter {
   submit(method: WriteMethod, args: CalldataEncodable[]): Promise<string>;
-  pollFinalized(hash: string): Promise<ContractReceipt | null>;
+  pollFinalized(hash: string, attempt?: number): Promise<ContractReceipt | null>;
 }
 
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 const DECIMAL_RE = /^(0|[1-9][0-9]*)$/;
 const NONCE_RE = /^[0-9a-f]{32}$/;
 const HASH_RE = /^0x?[0-9a-fA-F]{64}$/;
+const CASE_PHASES = ["GUESS_OPEN", "REVEAL_WAIT", "FROZEN", "UNRESOLVED", "EXHAUSTED", "DONE"] as const;
+
+function objectWithKeys(value: unknown, keys: readonly string[]): value is Record<string, unknown> {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return false;
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function validDecimal(value: unknown): value is string {
+  return typeof value === "string" && DECIMAL_RE.test(value);
+}
+
+function validHex(value: unknown, digits: number): value is string {
+  return typeof value === "string" && new RegExp(`^[0-9a-f]{${digits}}$`).test(value);
+}
+
+function validAddress(value: unknown): value is string {
+  return typeof value === "string" && /^0x[0-9a-f]{40}$/.test(value);
+}
+
+export function isExactCaseRecord(value: unknown): value is CaseRecord {
+  if (!objectWithKeys(value, [
+    "v", "id", "primary", "secondary", "phase", "revision", "parent", "create_hash", "base",
+    "response", "base_locked", "response_locked", "accepted_attempts", "last_accepted_at", "outcome",
+    "result", "domain", "last_operation",
+  ])) return false;
+  const record = value as Record<string, unknown>;
+  if (
+    record.v !== 1 || !validDecimal(record.id) || record.id === "0" || !validAddress(record.primary) ||
+    !validAddress(record.secondary) || record.primary === record.secondary ||
+    typeof record.phase !== "string" || !CASE_PHASES.includes(record.phase as (typeof CASE_PHASES)[number]) ||
+    !validDecimal(record.revision) || record.revision === "0" || record.parent !== "0" ||
+    !validHex(record.create_hash, 64) || typeof record.base_locked !== "boolean" ||
+    typeof record.response_locked !== "boolean" || !Number.isSafeInteger(record.accepted_attempts) ||
+    (record.accepted_attempts as number) < 0 || (record.accepted_attempts as number) > 3 ||
+    !validDecimal(record.last_accepted_at) || typeof record.outcome !== "string" ||
+    !["", "MATCH", "NO_MATCH", "VOID"].includes(record.outcome)
+  ) return false;
+
+  if (!objectWithKeys(record.base, ["clue", "commitment"])) return false;
+  if (typeof record.base.clue !== "string" || !validHex(record.base.commitment, 64)) return false;
+
+  if (typeof record.response !== "object" || record.response === null || Array.isArray(record.response)) return false;
+  const response = record.response as Record<string, unknown>;
+  if (Object.keys(response).length === 0) {
+    if (record.response_locked !== false) return false;
+  } else if (objectWithKeys(response, ["guess"])) {
+    if (typeof response.guess !== "string" || response.guess.length === 0 || record.response_locked !== true) return false;
+  } else {
+    return false;
+  }
+
+  if (typeof record.result !== "object" || record.result === null || Array.isArray(record.result)) return false;
+  const result = record.result as Record<string, unknown>;
+  if (Object.keys(result).length !== 0 && (!objectWithKeys(result, ["v", "label"]) || result.v !== 1 || !["MATCH", "NO_MATCH", "UNKNOWN"].includes(String(result.label)))) return false;
+
+  if (!objectWithKeys(record.domain, ["nonce", "answer", "salt", "deadline"])) return false;
+  const domain = record.domain as Record<string, unknown>;
+  if (!validHex(domain.nonce, 32) || typeof domain.answer !== "string" || typeof domain.salt !== "string" || !validDecimal(domain.deadline)) return false;
+  if (domain.salt !== "" && !validHex(domain.salt, 32)) return false;
+
+  if (typeof record.last_operation !== "object" || record.last_operation === null || Array.isArray(record.last_operation)) return false;
+  const operation = record.last_operation as Record<string, unknown>;
+  if (Object.keys(operation).length !== 0 && (!objectWithKeys(operation, ["method", "caller", "args_hash"]) || typeof operation.method !== "string" || !WRITE_METHODS.includes(operation.method as WriteMethod) || !validAddress(operation.caller) || !validHex(operation.args_hash, 64))) return false;
+  return true;
+}
 
 export function normalizeAddress(value: unknown): string {
   if (typeof value !== "string" || !ADDRESS_RE.test(value)) {
@@ -160,47 +228,164 @@ function requireNonce(value: string): string {
 
 function parseCase(raw: unknown): CaseRead {
   if (typeof raw !== "string" || raw === "null") throw new Error("Case not found.");
-  const record = JSON.parse(raw) as CaseRecord;
-  if (!record || typeof record !== "object" || record.v !== 1) throw new Error("Invalid case response.");
+  const record = JSON.parse(raw) as unknown;
+  if (!isExactCaseRecord(record)) throw new Error("Invalid case response.");
   return { raw, record };
 }
 
 const readClient = createClient({ chain: studionet });
+const inFlightReads = new Map<string, Promise<unknown>>();
+let inFlightLatestBlock: Promise<string> | null = null;
 
-async function readValue(functionName: string, args: CalldataEncodable[]): Promise<unknown> {
-  return readClient.readContract({
-    address: requireContractAddress() as GenLayerAddress,
+export function dedupeInFlight<T>(inFlight: Map<string, Promise<T>>, key: string, run: () => Promise<T>): Promise<T> {
+  const existing = inFlight.get(key);
+  if (existing) return existing;
+  let pending: Promise<T>;
+  pending = run().finally(() => {
+    if (inFlight.get(key) === pending) inFlight.delete(key);
+  });
+  inFlight.set(key, pending);
+  return pending;
+}
+
+function jsonSafe(value: unknown): unknown {
+  if (typeof value === "bigint") return { bigint: value.toString(10) };
+  if (value instanceof Uint8Array) return { bytes: [...value] };
+  if (Array.isArray(value)) return value.map(jsonSafe);
+  if (value instanceof Map) return [...value.entries()].map(([key, entry]) => [key, jsonSafe(entry)]);
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, jsonSafe(entry)]));
+  }
+  return value;
+}
+
+async function readValue(functionName: string, args: CalldataEncodable[], contractAddress = requireContractAddress()): Promise<unknown> {
+  const normalizedContract = normalizeAddress(contractAddress);
+  const key = canonicalJson([chainIdDecimal(), normalizedContract, functionName, jsonSafe(args)]);
+  return dedupeInFlight(inFlightReads, key, () => readClient.readContract({
+    address: normalizedContract as GenLayerAddress,
     functionName,
     args,
     transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
-  });
+  }));
 }
 
-export async function readCase(caseId: string): Promise<CaseRead> {
-  const raw = await readValue("get_case", [requireId(caseId)]);
+export function invalidateReadRequests(): void {
+  inFlightReads.clear();
+  inFlightLatestBlock = null;
+}
+
+export async function readCase(caseId: string, contractAddress = requireContractAddress()): Promise<CaseRead> {
+  const raw = await readValue("get_case", [requireId(caseId)], contractAddress);
   return parseCase(raw);
 }
 
-export async function readVersion(caseId: string, revision: string): Promise<string | null> {
-  const raw = await readValue("get_version", [requireId(caseId), requireRevision(revision)]);
+export async function readVersion(caseId: string, revision: string, contractAddress = requireContractAddress()): Promise<string | null> {
+  const raw = await readValue("get_version", [requireId(caseId), requireRevision(revision)], contractAddress);
   if (raw === "null") return null;
   if (typeof raw !== "string") throw new Error("Invalid history response.");
   return raw;
 }
 
-export async function readIdByNonce(creator: string, nonce: string): Promise<string> {
-  const value = await readValue("get_id_by_nonce", [normalizeAddress(creator) as GenLayerAddress, requireNonce(nonce)]);
+export async function readIdByNonce(creator: string, nonce: string, contractAddress = requireContractAddress()): Promise<string> {
+  const value = await readValue("get_id_by_nonce", [normalizeAddress(creator) as GenLayerAddress, requireNonce(nonce)], contractAddress);
   if (typeof value === "bigint") return value.toString(10);
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return String(value);
   if (typeof value === "string" && DECIMAL_RE.test(value)) return value;
   throw new Error("Invalid nonce lookup response.");
 }
 
+export async function readChainTime(): Promise<string> {
+  if (!inFlightLatestBlock) {
+    inFlightLatestBlock = readClient.getBlock({ blockTag: "latest" }).then((block) => {
+      const timestamp = block.timestamp;
+      if (typeof timestamp !== "bigint" && typeof timestamp !== "number" && typeof timestamp !== "string") throw new Error("Chain time unavailable.");
+      const value = String(timestamp);
+      if (!DECIMAL_RE.test(value)) throw new Error("Chain time unavailable.");
+      return value;
+    }).finally(() => { inFlightLatestBlock = null; });
+  }
+  return inFlightLatestBlock;
+}
+
+const TRANSACTION_STATUS_NAMES = Object.values(TransactionStatus) as string[];
+const EXECUTION_RESULT_NAMES = Object.values(ExecutionResult) as string[];
+
+function statusName(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    if (TRANSACTION_STATUS_NAMES.includes(value)) return value;
+    const numeric = Number(value);
+    return Number.isInteger(numeric) ? TRANSACTION_STATUS_NAMES[numeric] : undefined;
+  }
+  if (typeof value === "number" && Number.isInteger(value)) return TRANSACTION_STATUS_NAMES[value];
+  return undefined;
+}
+
+function executionResultName(value: unknown): string | undefined {
+  if (typeof value === "string") {
+    if (EXECUTION_RESULT_NAMES.includes(value)) return value;
+    const numeric = Number(value);
+    return Number.isInteger(numeric) ? EXECUTION_RESULT_NAMES[numeric] : undefined;
+  }
+  if (typeof value === "number" && Number.isInteger(value)) return EXECUTION_RESULT_NAMES[value];
+  return undefined;
+}
+
+function returnedCaseId(value: unknown): string | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const transaction = value as { consensus_data?: { leader_receipt?: unknown[] } };
+  const leaderReceipt = transaction.consensus_data?.leader_receipt;
+  const result = Array.isArray(leaderReceipt) && leaderReceipt.length > 0 ? leaderReceipt[0] : undefined;
+  if (typeof result !== "object" || result === null) return undefined;
+  const payload = (result as { result?: { payload?: { readable?: unknown } } }).result?.payload;
+  const readable = payload?.readable;
+  if (typeof readable !== "string" || !/^[1-9][0-9]*$/.test(readable)) return undefined;
+  return readable;
+}
+
+type RpcRequest = (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+
+async function lightweightTransactionStatus(client: ReturnType<typeof createClient>, hash: string): Promise<string> {
+  const request = client.request as unknown as RpcRequest;
+  const response = await request({ method: "gen_getTransactionStatus", params: [{ txId: hash }] });
+  if (typeof response !== "object" || response === null) throw new Error("Transaction status response is invalid.");
+  const body = response as { status?: unknown; statusCode?: unknown };
+  const name = statusName(body.status) ?? statusName(body.statusCode);
+  if (!name) throw new Error("Transaction status response is invalid.");
+  return name;
+}
+
+async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, hash: string): Promise<ContractReceipt | null> {
+  const receipt = await client.waitForTransactionReceipt({
+    hash: hash as unknown as GenLayerHash,
+    status: TransactionStatus.FINALIZED,
+    retries: 0,
+  });
+  const value = receipt as unknown as Record<string, unknown>;
+  const finalStatus = statusName(value.statusName ?? value.status_name ?? value.status);
+  if (finalStatus !== TransactionStatus.FINALIZED) return null;
+  const execution = executionResultName(value.txExecutionResultName ?? value.tx_execution_result_name ?? value.txExecutionResult ?? value.tx_execution_result);
+  return {
+    statusName: finalStatus,
+    txExecutionResultName: execution,
+    hash: typeof value.hash === "string" ? value.hash : undefined,
+    txId: typeof value.txId === "string" ? value.txId : typeof value.tx_id === "string" ? value.tx_id : undefined,
+    returnedCaseId: returnedCaseId(receipt),
+  };
+}
+
+async function pollClientFinalized(client: ReturnType<typeof createClient>, hash: string, attempt: number): Promise<ContractReceipt | null> {
+  if (attempt < 3) {
+    const status = await lightweightTransactionStatus(client, hash);
+    if (status !== TransactionStatus.FINALIZED) return null;
+  }
+  return fullFinalizedReceipt(client, hash);
+}
+
 export function parseRecord(raw: string): CaseRecord | null {
   if (raw === "null") return null;
-  const parsed = JSON.parse(raw) as CaseRecord;
-  if (!parsed || typeof parsed !== "object" || parsed.v !== 1) return null;
-  return parsed;
+  const parsed = JSON.parse(raw) as unknown;
+  return isExactCaseRecord(parsed) ? parsed : null;
 }
 
 export function makeWriteAdapter(wallet: ConnectedWallet): ContractWriteAdapter {
@@ -223,24 +408,14 @@ export function makeWriteAdapter(wallet: ConnectedWallet): ContractWriteAdapter 
       if (typeof hash !== "string" || !HASH_RE.test(hash)) throw new Error("Wallet did not return a transaction hash.");
       return hash.toLowerCase().startsWith("0x") ? hash.toLowerCase() : `0x${hash.toLowerCase()}`;
     },
-    async pollFinalized(hash) {
-      try {
-        const receipt = await client.waitForTransactionReceipt({
-          hash: hash as unknown as GenLayerHash,
-          status: TransactionStatus.FINALIZED,
-          retries: 0,
-        });
-        return {
-          statusName: receipt.statusName,
-          txExecutionResultName: receipt.txExecutionResultName,
-          hash: receipt.hash,
-          txId: receipt.txId,
-        };
-      } catch {
-        return null;
-      }
+    async pollFinalized(hash, attempt = 1) {
+      return pollClientFinalized(client, hash, attempt);
     },
   };
+}
+
+export async function pollFinalized(hash: string, attempt = 1): Promise<ContractReceipt | null> {
+  return pollClientFinalized(readClient, hash, attempt);
 }
 
 export function isSuccessfulReceipt(receipt: ContractReceipt): boolean {

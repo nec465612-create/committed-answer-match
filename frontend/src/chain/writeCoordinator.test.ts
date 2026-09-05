@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { executeWrite } from "./writeCoordinator";
-import { DurableJournal, canonicalJson, type JournalStorage, type LockManagerLike } from "../pending";
+import { executeWrite, reconcileWrite } from "./writeCoordinator";
+import { DurableJournal, canonicalJson, journalKey, type JournalStorage, type LockManagerLike } from "../pending";
 
 class MemoryStorage implements JournalStorage {
   private readonly values = new Map<string, string>();
@@ -74,6 +74,43 @@ describe("executeWrite", () => {
 
     expect(outcome.status).toBe("FINALIZED_ERROR");
     expect(preReads).toBe(1);
+  });
+
+  it("does one authoritative readback after finality and then preserves reconcile", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    let postReads = 0;
+    const outcome = await executeWrite(
+      plan({ verifyPost: async () => { postReads += 1; return false; } }),
+      { journal, sleep: async () => undefined },
+    );
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect(postReads).toBe(1);
+    expect((await journal.list())[0].status).toBe("RECONCILE");
+  });
+
+  it("reconciles an existing hash without submitting again", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const original = await journal.createSigning(journalInput);
+    const hash = "0x" + "b".repeat(64);
+    const submitted = await journal.update(journalKey(original.reservation), { ...original, status: "RECONCILE", tx_hash: hash });
+    let polls = 0;
+    let postReads = 0;
+    const outcome = await reconcileWrite({
+      journal: submitted,
+      pollFinalized: async (sameHash) => {
+        polls += 1;
+        expect(sameHash).toBe(hash);
+        return { statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_RETURN" };
+      },
+      verifyPost: async () => { postReads += 1; return true; },
+      verifyPre: async () => false,
+    }, { journal });
+
+    expect(outcome.status).toBe("VERIFIED");
+    expect(polls).toBe(1);
+    expect(postReads).toBe(1);
+    expect((await journal.list())[0].status).toBe("VERIFIED");
   });
 
   it("removes only an unsigned reservation after explicit wallet rejection", async () => {

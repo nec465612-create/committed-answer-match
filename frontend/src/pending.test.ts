@@ -60,7 +60,7 @@ function input(index: number) {
 }
 
 describe("DurableJournal", () => {
-  it("writes a reservation before index update and rebuilds an orphaned index", async () => {
+  it("writes a reservation before index update and lists records without requiring a lock", async () => {
     const storage = new MemoryStorage();
     const locks = new ImmediateLocks();
     const journal = new DurableJournal(storage, locks);
@@ -70,8 +70,18 @@ describe("DurableJournal", () => {
     expect(JSON.parse(storage.getItem(JOURNAL_INDEX_KEY) ?? "[]")).toEqual([journalKey(record.reservation)]);
     storage.removeItem(JOURNAL_INDEX_KEY);
     expect((await journal.list()).map((item) => item.reservation)).toEqual([record.reservation]);
-    expect(JSON.parse(storage.getItem(JOURNAL_INDEX_KEY) ?? "[]")).toEqual([journalKey(record.reservation)]);
+    expect(storage.getItem(JOURNAL_INDEX_KEY)).toBeNull();
     expect(locks.names.every((name) => name === "genlayer-journal-v1")).toBe(true);
+  });
+
+  it("keeps records readable and exportable when Web Locks are unavailable", async () => {
+    const storage = new MemoryStorage();
+    const locked = new DurableJournal(storage, new ImmediateLocks());
+    const record = await locked.createSigning(input(1));
+    const lockFree = new DurableJournal(storage, null);
+
+    expect(lockFree.signingAvailable).toBe(false);
+    expect(await lockFree.list()).toEqual([record]);
   });
 
   it("blocks a second pending write for the same case even with another account or method", async () => {

@@ -274,7 +274,11 @@ export class DurableJournal {
 
   async list(): Promise<JournalRecord[]> {
     if (!this.storage) return [];
-    return this.withLock(async () => sortRecords(this.readAndRebuildIndexLocked()));
+    return this.readRecordsLockFree();
+  }
+
+  get signingAvailable(): boolean {
+    return this.storage !== null && this.locks !== null && typeof this.locks.request === "function";
   }
 
   async createSigning(input: SigningInput): Promise<JournalRecord> {
@@ -414,7 +418,13 @@ export class DurableJournal {
   }
 
   private readAndRebuildIndexLocked(): JournalRecord[] {
-    if (!this.storage) storageError();
+    const sorted = this.readRecordsLockFree();
+    this.writeIndexLocked(sorted);
+    return sorted;
+  }
+
+  private readRecordsLockFree(): JournalRecord[] {
+    if (!this.storage) return [];
     try {
       const records: JournalRecord[] = [];
       for (let index = 0; index < this.storage.length; index += 1) {
@@ -424,12 +434,10 @@ export class DurableJournal {
         if (raw === null) fail("Journal record disappeared while reading.", "lock");
         records.push(validateJournalRecord(key, JSON.parse(raw) as unknown));
       }
-      const sorted = sortRecords(records);
-      this.writeIndexLocked(sorted);
-      return sorted;
+      return sortRecords(records);
     } catch (error) {
       if (error instanceof JournalError) throw error;
-      storageError();
+      fail("Journal data could not be read.");
     }
   }
 
