@@ -8,7 +8,10 @@ Committed Answer Match is a small GenLayer application for recording whether an 
 
 ## Current status
 
-This checkout is a local functional build. It has not been deployed or released from this repository. A contract address must be supplied through the local frontend environment before chain reads or writes can run.
+The exact reviewed replacement is deployed on Studionet at
+`0xD22f951BD5B7AE6615c27066e99a80D9751be5cF`. Primary-AI Studio evidence
+covers the S01–S06 live journeys; S07/S08 and physical hosted-UI RPC counting
+remain explicitly pending. No GitHub or Vercel release has been made.
 
 ## Case lifecycle
 
@@ -35,13 +38,16 @@ npm install --no-audit --no-fund
 npm run dev
 ```
 
-Create `frontend\.env` from `frontend\.env.example` and set the deployed contract address locally:
+Create `frontend\.env` from `frontend\.env.example` and set the exact
+replacement contract address locally:
 
 ```text
-VITE_CONTRACT_ADDRESS=0xYour40HexCharacterContractAddress
+VITE_CONTRACT_ADDRESS=0xD22f951BD5B7AE6615c27066e99a80D9751be5cF
 ```
 
-The address is intentionally not committed.
+The local `.env` is intentionally ignored. The address, source parity,
+deployment receipt and frozen/replacement rule are bound in
+`docs/DEPLOYMENT-MANIFEST.md`.
 
 ## Verification commands
 

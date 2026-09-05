@@ -1,5 +1,13 @@
 # Committed Answer Match — PRE_DEPLOY Readiness
 
+`DOCUMENT_STATUS: HISTORICAL_PRE_DEPLOY_CHECKPOINT — superseded by live replacement evidence`
+
+The table below preserves the exact pre-deployment checkpoint and its package
+identity. Current deployment and Studio evidence is recorded in
+`docs/DEPLOYMENT-MANIFEST.md`, `docs/STUDIO-INCIDENT-2026-09-05.md`, and
+`docs/RPC-BUDGET.md`; those later records do not retroactively change this
+historical review package.
+
 ## Checkpoint status
 
 | Field | Current value |
@@ -9,9 +17,9 @@
 | Checkpoint | `PRE_DEPLOY` |
 | Package identity | `CAM-PREDEPLOY-4B6556AD-DELTA-5` |
 | Exact source revision | `4b6556ad9b469f2baf95509d07970c0de19a3d45` |
-| Status | `ANONYMOUS REVIEW CHANGES REQUIRED — CORRECTIVE DELTA READY FOR RETAINED REVIEWER` |
-| Anonymous reviewer delivery | `NOT YET SENT — exact corrective package prepared` |
-| Studionet contract | Not deployed; no address or deployment transaction exists |
+| Status | `ANONYMOUS REVIEW APPROVED - PRE_DEPLOY; historical checkpoint` |
+| Anonymous reviewer delivery | `APPROVED — exact replacement package read back from retained reviewer` |
+| Studionet contract | Historical table value: not deployed at this checkpoint; current replacement is bound in the manifest |
 | Studio account | Selected and locked for deployment role: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`; no secret is recorded |
 | GitHub/Vercel targets | Not supplied; no push or hosting release exists |
 
@@ -206,10 +214,13 @@ The current exact-source package must satisfy these checkpoint rules before any 
 - **Submission Integrity Gate §§6, 8–10:** off-chain records remain provisional until finalized semantic success and authoritative readback; exact source, deployed source, address, manifest and evidence must match; target Studionet; disclose that local tests and prose do not substitute for live evidence.
 - **AI hierarchy:** `PRE_DEPLOY` is before any signature/deployment/write and bundles the Studio E2E plan. It is not deployment proof. Later `POST_DEPLOY_TEST`, `POST_GITHUB_VERCEL_FINAL`, and `EXPLORER_PRE_SUBMISSION` remain separate approvals.
 
-Remaining handoff blocker and later-stage blanks are intentional and explicit:
+The following blanks were true at the historical checkpoint and are now
+superseded where the current manifest and incident record provide evidence:
 
 1. The retained anonymous reviewer route is supplied in this Task. The delta package must be sent on that existing route and verified by reading the exact completed reviewer turn; no replacement reviewer conversation is allowed.
-2. Contract address, deployment transaction, live receipts, Explorer/RPC readback, GitHub identity, Vercel team/project, and public release URL do not exist yet; these are later-stage blanks and are not being presented as current evidence.
+2. GitHub identity, Vercel team/project, and public release URL remain unset; the replacement contract address, deployment transaction, live receipts, Explorer parity and Studio readbacks are now recorded in the current evidence files.
 3. The user-frozen classification is recorded, but it does not waive the anonymous PRE_DEPLOY review, Studio RPC matrix, Studio E2E, or later release gates.
 
-Until the retained reviewer returns the exact approval verdict, do not deploy, sign, write, push, configure a public contract address, or claim `PRE_DEPLOY` approval.
+The retained reviewer returned the exact `ANONYMOUS REVIEW APPROVED - PRE_DEPLOY`
+verdict. That approval does not waive the remaining `POST_DEPLOY_TEST`,
+`POST_GITHUB_VERCEL_FINAL`, or `EXPLORER_PRE_SUBMISSION` gates.

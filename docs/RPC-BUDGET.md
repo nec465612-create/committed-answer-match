@@ -9,9 +9,9 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
-- `STUDIO_MATRIX_STATUS: READY_FOR_PRE_DEPLOY_REVIEW`
-- `FRONTEND_MATRIX_STATUS: READY_FOR_PRE_DEPLOY_REVIEW`
-- `STUDIO_EVIDENCE_STATUS: PARTIAL/FAILED — S00 passed; S01 failed twice with BAD_ADDRESS; replacement PRE_DEPLOY is pending`
+- `STUDIO_MATRIX_STATUS: LIVE_EVIDENCE_PARTIAL — awaiting post-deploy review`
+- `FRONTEND_MATRIX_STATUS: READY_FOR_POST_DEPLOY_MEASUREMENT`
+- `STUDIO_EVIDENCE_STATUS: LIVE PARTIAL — replacement S00–S06 evidenced; S07/S08 and physical UI request count remain unresolved`
 - `FRONTEND_EVIDENCE_STATUS: LOCAL_ONLY — exact deployed-release measurement is required before POST_DEPLOY_TEST/release`
 
 Official references checked for the current transaction interface and lightweight status method:
@@ -54,7 +54,20 @@ Studio UI actions and transaction counts below are measured. The hosted UI's int
 | S01 create F1 | UI physical count not captured | 1 | `0x7a0e1193fe96190b6be2e1a3a9ba331ac0461aa4a8e037df99b1effefbb8b40e` | terminal leader/validator execution inspected | None after hash | Fresh fixture; finalized execution `BAD_ADDRESS` | FAIL, unchanged state expected |
 | S01 create F2 diagnostic | UI physical count not captured | 1 | `0x4d4d1f572abd570f5eca49a54998e5fd028e4007c533f91af0688fb9ef2f183b` | terminal leader/validator execution inspected | None after hash | New nonce and lowercase opponent isolated casing; same `BAD_ADDRESS` | FAIL, root cause located |
 | Read-only diagnostic | UI physical count not captured | 0 | NONE | No contract result obtained | Studio hit 30/min; stopped; later one reload also exhausted the UI budget | Probe abandoned because existing evidence plus verified runtime pattern located the defect | STOPPED ON QUOTA |
-| Replacement S00–S08 | NOT RUN | 0 | NONE | NOT RUN | No action before new PRE_DEPLOY approval | Source commit `77a182aa35d661e71facdb183bb6902289e188bd`; source SHA `5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC`; new address required | PENDING REVIEW |
+| Replacement S00–S08 | See live rows below | 17 writes observed, including one idempotent duplicate | See live rows below | Finality/receipts/readbacks captured per row | No duplicate after a returned hash; cooldowns honored | Final replacement source commit `77a182aa35d661e71facdb183bb6902289e188bd`; source SHA `5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC` | S00–S06 partial PASS; S07/S08 not claimed; physical count unresolved |
+
+Replacement live rows (2026-09-05; the hosted UI's physical request count
+was not instrumented, so `Actual requests` remains unresolved and is not zero):
+
+| Operation/case | Actual requests | Actual transactions | Hashes | Receipt/readback | Result |
+|---|---:|---:|---|---|---|
+| Replacement S00 final deploy | unresolved | 1 | `0x94005694eb8bc36780e258a80123f8965666e96b3801b8a4158566a4d2151644` | `FINALIZED/SUCCESS`; exact deployed-code SHA parity; `get_count=0` | PASS; physical count unresolved |
+| Intermediate replacement deploys | unresolved | 2 | `0x83c6aac45b993d6a55c4fc04b42ca98e02bd2bb881e934333969e54a197f3abb`; `0xaa9d10c039b0472fc16ec881cd61d0fac7346a635ceeb2708e31e38893ccace4` | Both finalized; old source / extra-newline parity failure | Rejected candidates; never upgrade |
+| S01–S04 MATCH path | unresolved | 4 | `0x85712016751dbe4251ab26b24d777446559734f608062f7a3f12a920693a54bb`; `0x5e16a2c157a30eb1bb74b20cceaf6c17995b5f5a0f9a163ab528888a5cf37b4e`; `0x5110f1d5d4ddca7d3fd8f826c1ac720098157721131c2639428f1c3c1ee756e6`; `0x38f5b5ca26aad86fc16a4e5251ba2ae042359af875c0aaf47289104081d94e6c` | All finalized/success; case 1 exact MATCH readback | PASS; physical count unresolved |
+| S05 NO_MATCH path | unresolved | 4 + 1 idempotent duplicate | `0xac265c38428a5e7e5a83ba6c556a6e8731e4f22a004946003d117547989abe9a`; `0x656faf600d7f39c751a3ff7ada40d3ae32b4ff2834b536d010f94adc4c447e88`; `0x2d93bb2b6250f4f99c862d9cc24df0e04187efd8811a654640b3c5b0e9327e63`; `0x5ae28ac7d460e457a95353305278120f74e5f0ecba13a99604b69d42402830a7`; `0xecfc09f6e585bd84b30908d5b59fb0756693a2d81f16c19440c717dbe04dfa1d` | All finalized/success; case 2 exact NO_MATCH readback | PASS with idempotent duplicate disclosed; physical count unresolved |
+| S06 rejection controls | unresolved | 3 rejected writes + 2 setup writes | `0x15ff28841ae145b50ecabd314cc58276bd076297fb33a5751f857c672eb188a2`; `0x32ed42d0bec692d7dfb9806b80d42b241de791479c1f359a174aa4c4b003e40a`; `0xc12dfd450a3cb229c8e763947910e65646a6bbc19477044882a541e76ad24868`; setup `0x093474c9413106d777f00100e5b9093e482e5c8443d89361e20e3165ed8a277f`; setup `0xe2f9df617363ff507535b9b3b49dbaefe3c08160202951dccdf25949fbdfe82d` | Rejections finalized/error with exact rollback markers; case 3 unchanged after bad reveal | PASS as control evidence; physical count unresolved |
+| S07 UNKNOWN/retry | unresolved | 0 | NONE | Not run; no speculative model or cooldown traffic | NOT CLAIMED |
+| S08 expiry | unresolved | 0 | NONE | Not run; no 30-minute wait or early-expiry replay | NOT CLAIMED |
 
 ## FRONTEND RPC BUDGET MATRIX
 

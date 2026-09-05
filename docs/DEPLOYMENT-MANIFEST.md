@@ -1,6 +1,6 @@
 # Committed Answer Match — Replacement Deployment Manifest
 
-`MANIFEST_STATUS: FIRST_INSTANCE_REJECTED — REPLACEMENT_PRE_DEPLOY_PENDING`
+`MANIFEST_STATUS: REPLACEMENT_DEPLOYED — POST_DEPLOY_E2E_PARTIAL`
 
 This secret-free manifest is the deployment/recovery binding for the exact
 reviewed source. It is not a deployment receipt and contains no private key,
@@ -19,12 +19,11 @@ IMPLEMENTATION_ADAPTATION_SHA256: 77FDDA9392FA8FC7A0B776DF9A1233C3B0140E375AF337
 ```
 
 The frontend is part of the reviewed package but is not embedded in the
-contract deployment. The address remains unset until the exact source is
-deployed and accepted:
+contract deployment. The exact replacement address is now bound below:
 
 ```text
 FRONTEND_CONFIG_KEY: VITE_CONTRACT_ADDRESS
-FRONTEND_CONFIG_VALUE: unset before S00
+FRONTEND_CONFIG_VALUE: 0xD22f951BD5B7AE6615c27066e99a80D9751be5cF
 FRONTEND_SOURCE_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
 ```
 
@@ -75,6 +74,26 @@ REPLACEMENT_SOURCE_SHA256: 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A
 
 See `STUDIO-INCIDENT-2026-09-05.md` for the two failed transaction hashes,
 root-cause evidence, and the replacement candidate's local verification.
+
+## Replacement deployment and live evidence
+
+```text
+REPLACEMENT_DEPLOY_TX: 0x94005694eb8bc36780e258a80123f8965666e96b3801b8a4158566a4d2151644
+REPLACEMENT_CONTRACT: 0xD22f951BD5B7AE6615c27066e99a80D9751be5cF
+REPLACEMENT_FINALITY: FINALIZED
+REPLACEMENT_SEMANTIC_EXECUTION: SUCCESS; consensus Accepted
+REPLACEMENT_SOURCE_PARITY: exact deployed payload SHA256 equals 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
+REPLACEMENT_INITIAL_COUNT_READBACK: 0 at Finalized
+POST_DEPLOY_STUDIO_E2E: S01 MATCH, S05 NO_MATCH, S06 rejection controls PASS
+POST_DEPLOY_STUDIO_E2E_REMAINING: S07 UNKNOWN/retry and S08 expiry are not claimed here
+PHYSICAL_STUDIO_REQUEST_COUNT: unresolved; do not treat missing measurement as zero
+```
+
+The two intermediate replacement candidates are rejected and must not be
+upgraded: `0x124F49152e558Ef7A4733A2eBBA04a7f8Cc08BD2` used the old source after
+a UI source-load mistake, and `0xD0CF5063Ba3E4B43CEa615B37314Ada776b0cE1a`
+contained one extra trailing newline. The final address above is the only
+replacement address eligible for later frontend binding.
 
 The separate [`RPC-BUDGET.md`](/E:/GenLayer-Projects/committed-answer-match/docs/RPC-BUDGET.md)
 contains the required `STUDIO RPC BUDGET MATRIX` and independent

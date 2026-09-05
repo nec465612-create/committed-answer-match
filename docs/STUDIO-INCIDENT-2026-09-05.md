@@ -55,6 +55,44 @@ LINT: PASS (3 checks)
 VALIDATION: PASS — CommittedAnswerMatch, 13 methods (7 view, 6 write)
 ```
 
-No new Studio deployment is permitted until the existing anonymous reviewer approves
-this exact replacement source and incident-bound delta. After approval, deploy a new
-instance; do not use Studio's upgrade action on the frozen rejected address.
+The retained anonymous reviewer approved this exact replacement source and
+incident-bound delta with `ANONYMOUS REVIEW APPROVED - PRE_DEPLOY`.
+
+## Replacement deployment attempts
+
+All replacement deployments used new addresses. None used Studio's `Upgrade
+code` action on the frozen address.
+
+| Candidate | Deployment transaction | Source evidence | Disposition |
+|---|---|---|---|
+| Intermediate 1 | `0x83c6aac45b993d6a55c4fc04b42ca98e02bd2bb881e934333969e54a197f3abb` | Explorer showed the old `_address()` implementation without the integer branch | Rejected; old source sent after a UI source-load mistake |
+| Intermediate 2 | `0xaa9d10c039b0472fc16ec881cd61d0fac7346a635ceeb2708e31e38893ccace4` | Deployed payload length 23533 and SHA256 `A69F998D44A3CB6A651340F8B9B79C6F19A974C636ADF592BF066C67EAB64A59`, versus exact local length 23532 | Rejected; extra trailing newline |
+| Final replacement | `0x94005694eb8bc36780e258a80123f8965666e96b3801b8a4158566a4d2151644` | `0xD22f951BD5B7AE6615c27066e99a80D9751be5cF`; deployed code SHA256 exactly `5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC` | Eligible replacement; never upgrade the rejected addresses |
+
+The final replacement deployment was `FINALIZED`, Studio reported `SUCCESS`
+and consensus `Accepted`, and the authoritative `get_count()` read at
+`Finalized` returned `0`. Some validator rows reported `Idle — Validator
+execution cancelled after quorum`; this did not change the accepted/finalized
+result.
+
+## Replacement live Studio E2E
+
+The locked account and final contract were used throughout the following
+secret-free fixtures. Transaction hashes below are full hashes read from the
+Studio receipt dialogs.
+
+| Case | Transaction evidence | Result and authoritative readback |
+|---|---|---|
+| S01 MATCH | `create_match` `0x85712016751dbe4251ab26b24d777446559734f608062f7a3f12a920693a54bb`; output `1` | `FINALIZED/SUCCESS`; case 1 `revision=4`, `outcome=MATCH`, `phase=DONE` |
+| S02 guess | `submit_guess` `0x5e16a2c157a30eb1bb74b20cceaf6c17995b5f5a0f9a163ab528888a5cf37b4e` | `FINALIZED/SUCCESS`; case 1 readback `revision=2`, `phase=REVEAL_WAIT`, caller B, guess `hello` |
+| S03 reveal | `reveal_answer` `0x5110f1d5d4ddca7d3fd8f826c1ac720098157721131c2639428f1c3c1ee756e6` | `FINALIZED/SUCCESS`; case 1 advanced to revision 3 |
+| S04 evaluate | `evaluate_match` `0x38f5b5ca26aad86fc16a4e5251ba2ae042359af875c0aaf47289104081d94e6c` | `FINALIZED/SUCCESS`; case 1 readback `revision=4`, `outcome=MATCH`, `phase=DONE` |
+| S05 NO_MATCH | create `0xac265c38428a5e7e5a83ba6c556a6e8731e4f22a004946003d117547989abe9a`; guess `0x2d93bb2b6250f4f99c862d9cc24df0e04187efd8811a654640b3c5b0e9327e63`; reveal `0x5ae28ac7d460e457a95353305278120f74e5f0ecba13a99604b69d42402830a7`; evaluate `0xecfc09f6e585bd84b30908d5b59fb0756693a2d81f16c19440c717dbe04dfa1d` | All `FINALIZED/SUCCESS`; consensus output `NO_MATCH`; case 2 readback `revision=4`, `outcome=NO_MATCH`, `phase=DONE` |
+| S06 controls | wrong actor `0x15ff28841ae145b50ecabd314cc58276bd076297fb33a5751f857c672eb188a2`; stale revision `0x32ed42d0bec692d7dfb9806b80d42b241de791479c1f359a174aa4c4b003e40a`; bad reveal `0xc12dfd450a3cb229c8e763947910e65646a6bbc19477044882a541e76ad24868` | All `FINALIZED/ERROR`; `[rollback] UNAUTHORIZED`, `[rollback] BAD_REVISION`, and `[rollback] BAD_REVEAL`; case 3 remained `revision=2`, `phase=REVEAL_WAIT`, answer/salt empty |
+
+The accidental idempotent duplicate create transaction
+`0x656faf600d7f39c751a3ff7ada40d3ae32b4ff2834b536d010f94adc4c447e88`
+replayed the already-used S01 nonce and returned existing case `1`; it did
+not create a new case or alter the final case state. S07 UNKNOWN/retry, S08
+expiry, and the physical hosted-UI request count remain explicitly unclaimed
+until separately measured.
