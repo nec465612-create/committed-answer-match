@@ -395,9 +395,7 @@ async function lightweightTransactionStatus(client: ReturnType<typeof createClie
     rowId: "transaction-status",
     key: hash,
     signal: signal ?? new AbortController().signal,
-    // The same legacy Studionet runtime expects a raw transaction hash for
-    // status polling as well as receipt reads.
-    call: () => request({ method: "gen_getTransactionStatus", params: [hash] }),
+    call: () => request({ method: "gen_getTransactionStatus", params: [{ txId: hash }] }),
   });
   if (typeof response !== "object" || response === null) throw new Error("Transaction status response is invalid.");
   const body = response as { status?: unknown; statusCode?: unknown };
