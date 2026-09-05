@@ -1,0 +1,111 @@
+// @vitest-environment node
+import { describe, expect, it } from "vitest";
+import { executeWrite } from "./writeCoordinator";
+import { DurableJournal, canonicalJson, type JournalStorage, type LockManagerLike } from "../pending";
+
+class MemoryStorage implements JournalStorage {
+  private readonly values = new Map<string, string>();
+  get length(): number { return this.values.size; }
+  key(index: number): string | null { return [...this.values.keys()][index] ?? null; }
+  getItem(key: string): string | null { return this.values.get(key) ?? null; }
+  setItem(key: string, value: string): void { this.values.set(key, value); }
+  removeItem(key: string): void { this.values.delete(key); }
+}
+
+class ImmediateLocks implements LockManagerLike {
+  async request(_name: string, _options: { mode: "exclusive" }, callback: (lock: unknown) => Promise<unknown>): Promise<unknown> {
+    return callback({});
+  }
+}
+
+const journalInput = {
+  chain: "61999",
+  contract: "0x" + "1".repeat(40),
+  account: "0x" + "2".repeat(40),
+  method: "evaluate_match",
+  intent: "evaluate_match:1:3",
+  argsJson: canonicalJson(["1", "3"]),
+  preRevision: "3",
+  preHash: "a".repeat(64),
+};
+
+function plan(overrides: Partial<Parameters<typeof executeWrite>[0]> = {}) {
+  return {
+    journal: journalInput,
+    submit: async () => "0x" + "b".repeat(64),
+    pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_RETURN" }),
+    verifyPost: async () => true,
+    verifyPre: async () => false,
+    ...overrides,
+  };
+}
+
+describe("executeWrite", () => {
+  it("uses three bounded receipt queries and verifies the historical postcondition", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const sleeps: number[] = [];
+    let polls = 0;
+    const outcome = await executeWrite(
+      plan({
+        pollFinalized: async () => {
+          polls += 1;
+          return polls === 3 ? { statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_RETURN" } : null;
+        },
+      }),
+        { journal, sleep: async (milliseconds) => { sleeps.push(milliseconds); } },
+    );
+
+    expect(outcome.status).toBe("VERIFIED");
+    expect(polls).toBe(3);
+    expect(sleeps).toEqual([2000, 4000, 8000]);
+    expect((await journal.list())[0].status).toBe("VERIFIED");
+  });
+
+  it("records a finalized execution error only after pre-state readback", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    let preReads = 0;
+    const outcome = await executeWrite(
+      plan({
+        pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_ERROR" }),
+        verifyPre: async () => { preReads += 1; return true; },
+      }),
+      { journal, sleep: async () => undefined },
+    );
+
+    expect(outcome.status).toBe("FINALIZED_ERROR");
+    expect(preReads).toBe(1);
+  });
+
+  it("removes only an unsigned reservation after explicit wallet rejection", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    let submitCalls = 0;
+    const outcome = await executeWrite(
+      plan({ submit: async () => { submitCalls += 1; throw { code: 4001 }; } }),
+      { journal },
+    );
+
+    expect(outcome.status).toBe("CANCELLED");
+    expect(submitCalls).toBe(1);
+    expect(await journal.list()).toHaveLength(0);
+  });
+
+  it("preserves an ambiguous no-hash submission as reconcile", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const outcome = await executeWrite(
+      plan({ submit: async () => { throw new Error("transport interrupted"); } }),
+      { journal },
+    );
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect((await journal.list())[0].tx_hash).toBe("");
+  });
+
+  it("does not call the wallet when the journal lock is unavailable", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), null);
+    let submitCalls = 0;
+    await expect(
+      executeWrite(plan({ submit: async () => { submitCalls += 1; return "0x" + "c".repeat(64); } }), { journal }),
+    ).rejects.toMatchObject({ kind: "lock" });
+    expect(submitCalls).toBe(0);
+  });
+});
