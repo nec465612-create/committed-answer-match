@@ -57,12 +57,32 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
   });
 }
 
+function withCallerSignal<T>(operation: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) return Promise.reject(signal.reason);
+  return new Promise<T>((resolve, reject) => {
+    const cleanup = () => signal.removeEventListener("abort", onAbort);
+    const onAbort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    signal.addEventListener("abort", onAbort, { once: true });
+    operation.then((value) => {
+      cleanup();
+      resolve(value);
+    }, (cause) => {
+      cleanup();
+      reject(cause);
+    });
+  });
+}
+
 export function createRpcBudgetGuard(rows: readonly RpcBudgetRow[]) {
   const byId = new Map(rows.map((row) => [row.id, row]));
   const counts = new Map<string, number>();
   const inFlight = new Map<string, Promise<unknown>>();
   const cache = new Map<string, { expiresAt: number; value: unknown }>();
   const evidence: RpcMetric[] = [];
+  let generation = 0;
 
   function row(id: string): RpcBudgetRow {
     const value = byId.get(id);
@@ -94,34 +114,38 @@ export function createRpcBudgetGuard(rows: readonly RpcBudgetRow[]) {
     const active = inFlight.get(scopedKey);
     if (active) {
       evidence.push({ rowId: input.rowId, key: input.key, source: "in-flight", attempt: 0, at: Date.now() });
-      return active as Promise<T>;
+      return withCallerSignal(active as Promise<T>, input.signal);
     }
 
+    const operationGeneration = generation;
+    const operationSignal = new AbortController().signal;
     const operation = (async () => {
       for (let attempt = 0; ; attempt += 1) {
-        input.signal.throwIfAborted();
+        operationSignal.throwIfAborted();
         spend(input.rowId);
         evidence.push({ rowId: input.rowId, key: input.key, source: "network", attempt, at: Date.now() });
         try {
           const value = await input.call();
-          input.signal.throwIfAborted();
-          if (budget.cacheTtlMs > 0) cache.set(scopedKey, { expiresAt: Date.now() + budget.cacheTtlMs, value });
+          if (budget.cacheTtlMs > 0 && operationGeneration === generation) {
+            cache.set(scopedKey, { expiresAt: Date.now() + budget.cacheTtlMs, value });
+          }
           return value;
         } catch (cause) {
           if (!(input.isRetryable ?? defaultRetryable)(cause) || attempt >= budget.maxRetries) throw cause;
           const serverDelay = retryAfterMs(cause);
           const exponential = budget.baseBackoffMs * (2 ** attempt);
           const jitter = Math.floor(Math.random() * Math.max(1, budget.baseBackoffMs));
-          await wait(serverDelay ?? exponential + jitter, input.signal);
+          await wait(serverDelay ?? exponential + jitter, operationSignal);
         }
       }
     })();
     inFlight.set(scopedKey, operation);
-    try {
-      return await operation;
-    } finally {
-      inFlight.delete(scopedKey);
-    }
+    void operation.then(() => {
+      if (inFlight.get(scopedKey) === operation) inFlight.delete(scopedKey);
+    }, () => {
+      if (inFlight.get(scopedKey) === operation) inFlight.delete(scopedKey);
+    });
+    return withCallerSignal(operation, input.signal);
   }
 
   async function poll<T>(input: {
@@ -143,7 +167,9 @@ export function createRpcBudgetGuard(rows: readonly RpcBudgetRow[]) {
   }
 
   function invalidate(match: (key: string) => boolean): void {
+    generation += 1;
     for (const key of cache.keys()) if (match(key)) cache.delete(key);
+    for (const key of inFlight.keys()) if (match(key)) inFlight.delete(key);
   }
 
   return {

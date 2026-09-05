@@ -160,3 +160,19 @@ confirmation and retained-hash/no-next-poll regressions. Local contract tests,
 lint, validation, frontend unit tests, build, Playwright and the PostDeployTest
 project audit pass; the same reviewer must recheck this exact repair revision
 before the checkpoint can be treated as current approval.
+
+The reviewer rechecked that repair at exact HEAD
+`758d4a7c05cc01e7f310c21bb4a6baa45f9f1b78`. PD-006 and PD-007 were closed and
+PD-008 was mostly closed, but the reviewer found PD-009: a later live caller
+could join an in-flight promise still governed by an aborted first caller, and
+the guard invalidation path did not rotate its private in-flight entry.
+
+The follow-up repair makes each deduped underlying operation independent of a
+caller AbortSignal, races each caller against its own signal, removes the
+redundant contract-level in-flight layer, routes latest-block reads through the
+same guard, and rotates invalidated guard entries with generation protection
+against stale cache writes. New regression coverage proves caller A can abort,
+caller B can request the same key and resolve successfully, and invalidation
+causes a new operation rather than joining stale work. The final reviewer
+recheck remains pending; no Studio action, redeployment or transaction was
+needed.

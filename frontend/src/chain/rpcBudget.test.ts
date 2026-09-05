@@ -65,4 +65,37 @@ describe("frontend RPC budget guard", () => {
     expect(call).toHaveBeenCalledOnce();
     expect(budget.counts()).toEqual({ measured: 1 });
   });
+
+  it("does not let one aborted caller poison a later same-key caller", async () => {
+    const budget = createRpcBudgetGuard([{ id: "read", maxRequests: 2, maxRetries: 0, baseBackoffMs: 1, cacheTtlMs: 0 }]);
+    const firstController = new AbortController();
+    let resolveRead: ((value: string) => void) | undefined;
+    const call = vi.fn(() => new Promise<string>((resolve) => { resolveRead = resolve; }));
+    const first = budget.request({ rowId: "read", key: "same", signal: firstController.signal, call });
+    await Promise.resolve();
+    firstController.abort(new Error("first caller ended"));
+    const second = budget.request({ rowId: "read", key: "same", signal: signal(), call });
+    resolveRead?.("valid");
+
+    await expect(first).rejects.toThrow("first caller ended");
+    await expect(second).resolves.toBe("valid");
+    expect(call).toHaveBeenCalledOnce();
+    expect(budget.counts()).toEqual({ read: 1 });
+  });
+
+  it("rotates an invalidated in-flight key before a new caller joins", async () => {
+    const budget = createRpcBudgetGuard([{ id: "read", maxRequests: 2, maxRetries: 0, baseBackoffMs: 1, cacheTtlMs: 0 }]);
+    const values: Array<(value: string) => void> = [];
+    const call = vi.fn(() => new Promise<string>((resolve) => { values.push(resolve); }));
+    const first = budget.request({ rowId: "read", key: "same", signal: signal(), call });
+    await Promise.resolve();
+    budget.invalidate(() => true);
+    const second = budget.request({ rowId: "read", key: "same", signal: signal(), call });
+    expect(call).toHaveBeenCalledTimes(2);
+    values[0]?.("stale");
+    values[1]?.("fresh");
+    await expect(first).resolves.toBe("stale");
+    await expect(second).resolves.toBe("fresh");
+    expect(budget.counts()).toEqual({ read: 2 });
+  });
 });

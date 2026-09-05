@@ -279,19 +279,6 @@ const readRpcBudget = createRpcBudgetGuard([
   { id: "transaction-status", maxRequests: 1000, maxRetries: 0, baseBackoffMs: 200, cacheTtlMs: 0 },
   { id: "terminal-receipt", maxRequests: 1000, maxRetries: 0, baseBackoffMs: 200, cacheTtlMs: 0 },
 ]);
-const inFlightReads = new Map<string, Promise<unknown>>();
-let inFlightLatestBlock: Promise<string> | null = null;
-
-export function dedupeInFlight<T>(inFlight: Map<string, Promise<T>>, key: string, run: () => Promise<T>): Promise<T> {
-  const existing = inFlight.get(key);
-  if (existing) return existing;
-  let pending: Promise<T>;
-  pending = run().finally(() => {
-    if (inFlight.get(key) === pending) inFlight.delete(key);
-  });
-  inFlight.set(key, pending);
-  return pending;
-}
 
 function jsonSafe(value: unknown): unknown {
   if (typeof value === "bigint") return { bigint: value.toString(10) };
@@ -307,7 +294,7 @@ function jsonSafe(value: unknown): unknown {
 async function readValue(functionName: string, args: CalldataEncodable[], contractAddress = requireContractAddress(), signal?: AbortSignal): Promise<unknown> {
   const normalizedContract = normalizeAddress(contractAddress);
   const key = canonicalJson([chainIdDecimal(), normalizedContract, functionName, jsonSafe(args)]);
-  return dedupeInFlight(inFlightReads, key, () => readRpcBudget.request({
+  return readRpcBudget.request({
     rowId: "contract-read",
     key,
     signal: signal ?? new AbortController().signal,
@@ -317,12 +304,10 @@ async function readValue(functionName: string, args: CalldataEncodable[], contra
       args,
       transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
     }),
-  }));
+  });
 }
 
 export function invalidateReadRequests(): void {
-  inFlightReads.clear();
-  inFlightLatestBlock = null;
   readRpcBudget.invalidate(() => true);
 }
 
@@ -347,21 +332,17 @@ export async function readIdByNonce(creator: string, nonce: string, contractAddr
 }
 
 export async function readChainTime(signal?: AbortSignal): Promise<string> {
-  if (!inFlightLatestBlock) {
-    inFlightLatestBlock = readRpcBudget.request({
-      rowId: "latest-block",
-      key: `${chainIdDecimal()}:latest`,
-      signal: signal ?? new AbortController().signal,
-      call: () => readClient.getBlock({ blockTag: "latest" }),
-    }).then((block) => {
-        const timestamp = block.timestamp;
-        if (typeof timestamp !== "bigint" && typeof timestamp !== "number" && typeof timestamp !== "string") throw new Error("Chain time unavailable.");
-        const value = String(timestamp);
-        if (!DECIMAL_RE.test(value)) throw new Error("Chain time unavailable.");
-        return value;
-      }).finally(() => { inFlightLatestBlock = null; });
-  }
-  return inFlightLatestBlock;
+  const block = await readRpcBudget.request({
+    rowId: "latest-block",
+    key: `${chainIdDecimal()}:latest`,
+    signal: signal ?? new AbortController().signal,
+    call: () => readClient.getBlock({ blockTag: "latest" }),
+  });
+  const timestamp = block.timestamp;
+  if (typeof timestamp !== "bigint" && typeof timestamp !== "number" && typeof timestamp !== "string") throw new Error("Chain time unavailable.");
+  const value = String(timestamp);
+  if (!DECIMAL_RE.test(value)) throw new Error("Chain time unavailable.");
+  return value;
 }
 
 const TRANSACTION_STATUS_NAMES = Object.values(TransactionStatus) as string[];

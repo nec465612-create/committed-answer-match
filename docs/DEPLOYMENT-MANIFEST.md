@@ -90,7 +90,7 @@ STUDIO_MEASUREMENT_MODE: OBSERVABLE_ACTION_LEDGER
 STUDIO_MEASUREMENT_TIMING: RETROSPECTIVE_LEGACY
 PHYSICAL_STUDIO_REQUEST_COUNT: NONE CLAIMED — physical telemetry unavailable
 POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW RECHECK REQUESTED - POST_DEPLOY_TEST
-POST_DEPLOY_REVIEW_RESIDUAL: Frontend P1 repair recheck pending — PD-006, PD-007 and PD-008; Studio ledger remains accepted from the prior exact package
+POST_DEPLOY_REVIEW_RESIDUAL: Frontend P1 repair recheck pending — PD-009 shared in-flight cancellation; PD-006/PD-007 closed and PD-008 repaired locally; Studio ledger remains accepted from the prior exact package
 ```
 
 The two intermediate replacement candidates are rejected and must not be
