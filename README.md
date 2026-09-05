@@ -10,8 +10,10 @@ Committed Answer Match is a small GenLayer application for recording whether an 
 
 The exact reviewed replacement is deployed on Studionet at
 `0xD22f951BD5B7AE6615c27066e99a80D9751be5cF`. Primary-AI Studio evidence
-covers the S01–S08 live journeys; physical hosted-UI RPC counting remains
-explicitly pending. No GitHub or Vercel release has been made.
+covers the S01–S08 live journeys. The legacy Studio run uses an
+`OBSERVABLE_ACTION_LEDGER`; physical hosted-UI request counting is not claimed
+because the retained platform binding exposes no physical counter. No GitHub
+or Vercel release has been made.
 
 ## Case lifecycle
 

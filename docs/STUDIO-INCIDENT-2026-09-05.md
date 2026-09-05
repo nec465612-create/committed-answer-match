@@ -96,20 +96,19 @@ The accidental idempotent duplicate create transaction
 `0x656faf600d7f39c751a3ff7ada40d3ae32b4ff2834b536d010f94adc4c447e88`
 replayed the already-used S01 nonce and returned existing case `1`; it did
 not create a new case or alter the final case state. S07 and S08 logical live
-journeys are now complete. The physical hosted-UI request count remains
-explicitly unclaimed until separately instrumented.
+journeys are now complete. The physical hosted-UI request count is explicitly
+unclaimed; the current rule's retrospective ledger route is used instead of
+replaying any write.
 
 ## Current checkpoint disposition
 
 The retained reviewer rechecked commit `4734fc290cd0838126884e558f63c8f50a8318b9`
 and returned exactly `ANONYMOUS REVIEW CHANGES REQUIRED - POST_DEPLOY_TEST`.
 PD-002 (expiry), PD-003 (UNKNOWN/retry disposition), and PD-004 (frontend
-stage wording) are closed. PD-001 is the sole residual blocker: the hosted IAB
-Studio binding exposes DOM/Playwright and console logs but no network,
-performance, or CDP request counter, and the earlier physical request history
-is unrecoverable. This remains blocked rather than being inferred or relabeled
-as zero; no duplicate transaction or redeployment is permitted to manufacture
-the evidence.
+stage wording) are closed. The report's PD-001 physical-count finding was made
+before the current explicit legacy evidence route was applied. It remains
+historical review evidence, not an approval; this package requests the same
+reviewer to recheck the declared mode and complete ledger.
 
 As a bounded recovery probe, a newly opened `/run-debug` Studio tab was loaded
 once after the retained tab had been removed from the Browser runtime. The
@@ -117,4 +116,25 @@ tab's console log exposed three `gen_getContractSchema` errors, each reporting
 `Rate limit exceeded: 30 requests per minute`; it exposed neither successful
 request events nor a total request counter. The probe was then closed. This is
 runtime evidence for the Studio quota constraint, not a physical request count
-or a reason to treat the missing count as zero.
+or a reason to treat the missing count as zero. It is the capability evidence
+for `OBSERVABLE_ACTION_LEDGER` with timing `RETROSPECTIVE_LEGACY`.
+
+## Measurement-mode correction
+
+The current canonical RPC rule permits a legacy Studio run to use an honest
+retrospective action ledger when physical network telemetry is unavailable. The
+capability probe at `2026-09-05T16:07:09.809Z` recorded:
+
+```text
+MODE: OBSERVABLE_ACTION_LEDGER
+TIMING: RETROSPECTIVE_LEGACY
+PHYSICAL_STUDIO_REQUESTS: NOT_APPLICABLE
+PHYSICAL_COUNT_CLAIM: NONE
+REPLAY_OR_REDEPLOY_FOR_MEASUREMENT: NO
+CAPABILITY: IAB DOM/console only; no performance/network/CDP counter granted
+ADDITIONAL_PROBE: three gen_getContractSchema 30/min errors; tab closed
+LEDGER: 22 retained replacement logical actions/transactions, 22 terminal receipt reads, 22 authoritative readback records, one pre-hash retry and one disclosed idempotent duplicate
+```
+
+The full per-row ledger, hashes, variance and the distinction between logical
+actions and physical RPC requests are locked in `docs/RPC-BUDGET.md`.

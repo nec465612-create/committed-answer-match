@@ -9,12 +9,41 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
-- `STUDIO_MATRIX_STATUS: LIVE_EVIDENCE_PARTIAL — awaiting post-deploy review`
+- `STUDIO_MATRIX_STATUS: COMPLETE — OBSERVABLE_ACTION_LEDGER`
 - `FRONTEND_MATRIX_STATUS: READY_FOR_POST_DEPLOY_MEASUREMENT`
-- `STUDIO_EVIDENCE_STATUS: LIVE PARTIAL — replacement S00–S08 evidenced; physical UI request count remains unresolved`
-- `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW CHANGES REQUIRED - POST_DEPLOY_TEST`
-- `POST_DEPLOY_REVIEW_RESIDUAL: PD-001 only — physical Studio request measurement remains unrecoverable`
+- `STUDIO_EVIDENCE_STATUS: COMPLETE — replacement S00–S08 logical evidence plus retrospective observable action ledger; no physical-count claim`
+- `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS RECHECK REQUESTED — POST_DEPLOY_TEST`
+- `POST_DEPLOY_REVIEW_RESIDUAL: prior PD-001 physical-count finding is answered by the declared legacy measurement mode; reviewer recheck pending`
 - `FRONTEND_EVIDENCE_STATUS: PLAN_AND_MATRIX_READY — no exact-release measurement claimed; physical release measurement and wallet-signed E2E are later POST_GITHUB_VERCEL_FINAL gates`
+
+## STUDIO RPC MEASUREMENT CAPABILITY PROBE
+
+The replacement Studio E2E predates the current capability-probe rule. The
+retained run is therefore recorded under the rule's explicit legacy path rather
+than replayed. The probe below is a capability result, not a retrospective
+physical-request count.
+
+```yaml
+STUDIO_CAPABILITY_PROBE_STATUS: COMPLETE
+STUDIO_MEASUREMENT_MODE: OBSERVABLE_ACTION_LEDGER
+STUDIO_MEASUREMENT_TIMING: RETROSPECTIVE_LEGACY
+STUDIO_CAPABILITY_PROBE_AT: "2026-09-05T16:07:09.809Z"
+STUDIO_FIRST_ACTION_AT: "2026-09-05T14:48:32.546Z — retained final replacement deployment action"
+STUDIO_E2E_STARTED_AT: "2026-09-05T14:48:32.546Z — retained replacement run"
+STUDIO_CAPABILITY_TOOL_OR_API: "Codex in-app Browser browser-client DOM/console logs; hosted Studio WebSocket event surface inspected; no CDP/performance request source granted"
+STUDIO_CAPABILITY_CHECK: "tab capabilities={} and capabilityKeys=[]; restricted page evaluation exposed no performance/fetch/XMLHttpRequest/WebSocket request counter; tab.dev.logs exposed no request counter; tab_cdp_events was not granted; a bounded fresh /run-debug probe exposed three gen_getContractSchema 30/min errors"
+STUDIO_CAPABILITY_RESULT: "physical network requests are not exposed to the retained browser binding; primary-AI Studio actions, transaction hashes, bounded lifecycle observations, terminal receipt evidence and authoritative readbacks are retained"
+STUDIO_PHYSICAL_COUNT_SOURCE: NOT_APPLICABLE
+STUDIO_PHYSICAL_COUNT_CLAIM: NONE
+STUDIO_REPLAY_FOR_MEASUREMENT: NO
+```
+
+The hosted Studio client was also inspected without submitting a transaction:
+it sends JSON-RPC through `https://studio.genlayer.com/api` and publishes
+`endpoint_call`, `endpoint_success`, `endpoint_error`, transaction-status,
+receipt and contract-read/write events over its WebSocket log surface. That
+proves the product has an event channel, but it does not reconstruct the old
+run's per-request physical count; no such count is claimed.
 
 Official references checked for the current transaction interface and lightweight status method:
 
@@ -44,40 +73,89 @@ Studio work is sparse and deliberate. Deterministic behavior and rejected transi
 | S08 expiry | `expire_match`; status/receipt; one `get_version` | One fresh case left to deadline | 5 RPC/actions | Lifecycle max 3 at 2/4/8 seconds | No early retry; stop on rate limit | Finalized + semantic success + DONE/VOID readback | 1 | Deadline evidence and preserved inputs/history |
 | Explicit read/reconcile | `get_case`/`get_version` or same-hash status check | One user/operator click only | 1 view, or 1 lifecycle probe | No background polling | Same hash only; no transaction submission | Fresh authoritative read or retained RECONCILE | 0 | Trigger and returned row recorded |
 
-`Planned maximum` is the per-row Studio request/action envelope. If Studio's UI performs additional requests, the actual network count must include them; the row fails its budget until the variance is explained. Missing live measurement is not zero.
+`Planned maximum` is the per-row Studio request/action envelope. In the
+retrospective legacy mode below, physical requests are `NOT_APPLICABLE` and
+logical Studio actions, transaction submissions, bounded status observations,
+terminal receipts, readbacks, retries and variance are recorded separately.
+Missing physical telemetry is not zero.
 
 ## STUDIO RPC BUDGET EVIDENCE
 
-Studio UI actions and transaction counts below are measured. The hosted UI's internal physical request count was not captured before the run, so it is explicitly unresolved rather than reported as zero. This blocks `POST_DEPLOY_TEST` but does not justify replaying writes. The replacement run must capture the physical count and explain any UI amplification.
+The hosted UI's internal physical request count was not exposed by the retained
+browser binding. Under the current rule this is recorded as
+`OBSERVABLE_ACTION_LEDGER` with timing `RETROSPECTIVE_LEGACY`: it makes no
+physical-count claim and does not replay any write or redeploy merely to
+measure. The ledger below binds the retained replacement actions to their
+hashes, terminal evidence, readbacks, retries and variance.
 
-| Operation/case | Actual requests | Actual transactions | Hash | Receipt/readback calls | Retry/Retry-After | Variance from matrix | Result |
+| Operation/case | Physical requests if observable | Actual transactions | Hash | Receipt/readback calls | Retry/Retry-After | Variance from matrix | Result |
 |---|---:|---:|---|---:|---|---|---|
-| S00 deploy | UI physical count not captured | 1 | `0x1006b81a527f73db301f63c3ed551f70c1c8720dbe23f4262880851f1340d711` | finalized status, deployed-code parity, `get_count=0` | First submission action failed pre-hash on 30/min; 55s cooldown; one retry | One pre-hash retry; one actual deployment transaction | PASS, count variance unresolved |
-| S01 create F1 | UI physical count not captured | 1 | `0x7a0e1193fe96190b6be2e1a3a9ba331ac0461aa4a8e037df99b1effefbb8b40e` | terminal leader/validator execution inspected | None after hash | Fresh fixture; finalized execution `BAD_ADDRESS` | FAIL, unchanged state expected |
-| S01 create F2 diagnostic | UI physical count not captured | 1 | `0x4d4d1f572abd570f5eca49a54998e5fd028e4007c533f91af0688fb9ef2f183b` | terminal leader/validator execution inspected | None after hash | New nonce and lowercase opponent isolated casing; same `BAD_ADDRESS` | FAIL, root cause located |
-| Read-only diagnostic | UI physical count not captured | 0 | NONE | No contract result obtained | Studio hit 30/min; stopped; later one reload also exhausted the UI budget | Probe abandoned because existing evidence plus verified runtime pattern located the defect | STOPPED ON QUOTA |
-| Replacement S00–S08 | See live rows below | 22 writes observed, including one idempotent duplicate | See live rows below | Finality/receipts/readbacks captured per row | No duplicate after a returned hash; cooldowns honored | Final replacement source commit `77a182aa35d661e71facdb183bb6902289e188bd`; source SHA `5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC` | S00–S08 logical evidence PASS; physical count unresolved |
+| S00 deploy | NOT_APPLICABLE | 1 | `0x1006b81a527f73db301f63c3ed551f70c1c8720dbe23f4262880851f1340d711` | finalized status, deployed-code parity, `get_count=0` | First submission action failed pre-hash on 30/min; 55s cooldown; one retry | One pre-hash retry; one actual deployment transaction | PASS; no physical-count claim |
+| S01 create F1 | NOT_APPLICABLE | 1 | `0x7a0e1193fe96190b6be2e1a3a9ba331ac0461aa4a8e037df99b1effefbb8b40e` | terminal leader/validator execution inspected | None after hash | Fresh fixture; finalized execution `BAD_ADDRESS` | FAIL, unchanged state expected |
+| S01 create F2 diagnostic | NOT_APPLICABLE | 1 | `0x4d4d1f572abd570f5eca49a54998e5fd028e4007c533f91af0688fb9ef2f183b` | terminal leader/validator execution inspected | None after hash | New nonce and lowercase opponent isolated casing; same `BAD_ADDRESS` | FAIL, root cause located |
+| Read-only diagnostic | NOT_APPLICABLE | 0 | NONE | No contract result obtained | Studio hit 30/min; stopped; later one reload also exhausted the UI budget | Probe adds no contract transaction evidence | STOPPED ON QUOTA |
+| Replacement S00–S08 | NOT_APPLICABLE | 22 writes observed, including one idempotent duplicate | See live rows below | Finality/receipts/readbacks captured per row | No returned-hash retry; cooldowns honored | Final replacement source commit `77a182aa35d661e71facdb183bb6902289e188bd`; source SHA `5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC` | Logical evidence PASS; physical-count claim NONE |
 
-Replacement live rows (2026-09-05; the hosted UI's physical request count
-was not instrumented, the retained tab exposes no network/performance/CDP
-counter, and its console log buffer contains no request counter, so `Actual
-requests` remains unresolved and is not zero):
+Replacement live rows (2026-09-05; legacy observable action ledger). The
+`Physical requests if observable` column is intentionally `NOT_APPLICABLE`. The counts in the
+other columns are logical Studio actions and retained evidence records, never
+physical RPC totals:
 
 A bounded tab-recovery probe on 2026-09-05 loaded `/run-debug` once and then
 closed the tab. Its console exposed three `gen_getContractSchema` errors with
 `Rate limit exceeded: 30 requests per minute`, but no successful-request trace
 or total counter. This confirms quota pressure while leaving the physical
-request total unresolved; it adds no contract transaction evidence.
+request total unrecoverable; it adds no contract transaction evidence and is
+recorded as a capability limitation, not as a physical request count.
 
-| Operation/case | Actual requests | Actual transactions | Hashes | Receipt/readback | Result |
+| Operation/case | Physical requests if observable | Actual transactions | Hashes | Receipt/readback | Result |
 |---|---:|---:|---|---|---|
-| Replacement S00 final deploy | unresolved | 1 | `0x94005694eb8bc36780e258a80123f8965666e96b3801b8a4158566a4d2151644` | `FINALIZED/SUCCESS`; exact deployed-code SHA parity; `get_count=0` | PASS; physical count unresolved |
-| Intermediate replacement deploys | unresolved | 2 | `0x83c6aac45b993d6a55c4fc04b42ca98e02bd2bb881e934333969e54a197f3abb`; `0xaa9d10c039b0472fc16ec881cd61d0fac7346a635ceeb2708e31e38893ccace4` | Both finalized; old source / extra-newline parity failure | Rejected candidates; never upgrade |
-| S01–S04 MATCH path | unresolved | 4 | `0x85712016751dbe4251ab26b24d777446559734f608062f7a3f12a920693a54bb`; `0x5e16a2c157a30eb1bb74b20cceaf6c17995b5f5a0f9a163ab528888a5cf37b4e`; `0x5110f1d5d4ddca7d3fd8f826c1ac720098157721131c2639428f1c3c1ee756e6`; `0x38f5b5ca26aad86fc16a4e5251ba2ae042359af875c0aaf47289104081d94e6c` | All finalized/success; case 1 exact MATCH readback | PASS; physical count unresolved |
-| S05 NO_MATCH path | unresolved | 4 + 1 idempotent duplicate | `0xac265c38428a5e7e5a83ba6c556a6e8731e4f22a004946003d117547989abe9a`; `0x656faf600d7f39c751a3ff7ada40d3ae32b4ff2834b536d010f94adc4c447e88`; `0x2d93bb2b6250f4f99c862d9cc24df0e04187efd8811a654640b3c5b0e9327e63`; `0x5ae28ac7d460e457a95353305278120f74e5f0ecba13a99604b69d42402830a7`; `0xecfc09f6e585bd84b30908d5b59fb0756693a2d81f16c19440c717dbe04dfa1d` | All finalized/success; case 2 exact NO_MATCH readback | PASS with idempotent duplicate disclosed; physical count unresolved |
-| S06 rejection controls | unresolved | 3 rejected writes + 2 setup writes | `0x15ff28841ae145b50ecabd314cc58276bd076297fb33a5751f857c672eb188a2`; `0x32ed42d0bec692d7dfb9806b80d42b241de791479c1f359a174aa4c4b003e40a`; `0xc12dfd450a3cb229c8e763947910e65646a6bbc19477044882a541e76ad24868`; setup `0x093474c9413106d777f00100e5b9093e482e5c8443d89361e20e3165ed8a277f`; setup `0xe2f9df617363ff507535b9b3b49dbaefe3c08160202951dccdf25949fbdfe82d` | Rejections finalized/error with exact rollback markers; case 3 unchanged after bad reveal | PASS as control evidence; physical count unresolved |
-| S07 ambiguity | unresolved | 4 | create `0xa6e76d9fb82abc17d983b9d5873648009dcd306d7b3766db926975fd0ccf2ef6`; guess `0xff95a487ae84ac3a9b4788ec48fa7cb4e763da3eac60a2b51431abb8b1567914`; reveal `0x01773206258d174200a35fc710c30d1e04667c7ed7ed666c5888e268354564a7`; evaluate `0xec28171464f38002dc3bab281d6b2bc0a0a62d6a7768f998ca0152267cb9ca12` | All finalized/success; evaluate NO_MATCH; get_version(4,4) exact readback; no retry because result was not UNKNOWN | PASS; physical count unresolved |
-| S08 expiry | unresolved | 1 | `0xa74f09fae8c3bb0ddf321fcd202220df09d3c586d3c1398ca1d21fe2c7dea087` | Finalized/success; deadline passed; case 3 exact DONE/VOID readback; no model call | PASS; physical count unresolved |
+| Replacement S00 final deploy | NOT_APPLICABLE | 1 | `0x94005694eb8bc36780e258a80123f8965666e96b3801b8a4158566a4d2151644` | `FINALIZED/SUCCESS`; exact deployed-code SHA parity; `get_count=0` | PASS; physical-count claim NONE |
+| Intermediate replacement deploys | NOT_APPLICABLE | 2 | `0x83c6aac45b993d6a55c4fc04b42ca98e02bd2bb881e934333969e54a197f3abb`; `0xaa9d10c039b0472fc16ec881cd61d0fac7346a635ceeb2708e31e38893ccace4` | Both finalized; old source / extra-newline parity failure | Rejected candidates; never upgrade; physical-count claim NONE |
+| S01–S04 MATCH path | NOT_APPLICABLE | 4 | `0x85712016751dbe4251ab26b24d777446559734f608062f7a3f12a920693a54bb`; `0x5e16a2c157a30eb1bb74b20cceaf6c17995b5f5a0f9a163ab528888a5cf37b4e`; `0x5110f1d5d4ddca7d3fd8f826c1ac720098157721131c2639428f1c3c1ee756e6`; `0x38f5b5ca26aad86fc16a4e5251ba2ae042359af875c0aaf47289104081d94e6c` | All finalized/success; case 1 exact MATCH readback | PASS; physical-count claim NONE |
+| S05 NO_MATCH path | NOT_APPLICABLE | 4 + 1 idempotent duplicate | `0xac265c38428a5e7e5a83ba6c556a6e8731e4f22a004946003d117547989abe9a`; `0x656faf600d7f39c751a3ff7ada40d3ae32b4ff2834b536d010f94adc4c447e88`; `0x2d93bb2b6250f4f99c862d9cc24df0e04187efd8811a654640b3c5b0e9327e63`; `0x5ae28ac7d460e457a95353305278120f74e5f0ecba13a99604b69d42402830a7`; `0xecfc09f6e585bd84b30908d5b59fb0756693a2d81f16c19440c717dbe04dfa1d` | All finalized/success; case 2 exact NO_MATCH readback | PASS; duplicate disclosed; physical-count claim NONE |
+| S06 rejection controls | NOT_APPLICABLE | 3 rejected writes + 2 setup writes | `0x15ff28841ae145b50ecabd314cc58276bd076297fb33a5751f857c672eb188a2`; `0x32ed42d0bec692d7dfb9806b80d42b241de791479c1f359a174aa4c4b003e40a`; `0xc12dfd450a3cb229c8e763947910e65646a6bbc19477044882a541e76ad24868`; setup `0x093474c9413106d777f00100e5b9093e482e5c8443d89361e20e3165ed8a277f`; setup `0xe2f9df617363ff507535b9b3b49dbaefe3c08160202951dccdf25949fbdfe82d` | Rejections finalized/error with exact rollback markers; case 3 unchanged after bad reveal | PASS as control evidence; physical-count claim NONE |
+| S07 ambiguity | NOT_APPLICABLE | 4 | create `0xa6e76d9fb82abc17d983b9d5873648009dcd306d7b3766db926975fd0ccf2ef6`; guess `0xff95a487ae84ac3a9b4788ec48fa7cb4e763da3eac60a2b51431abb8b1567914`; reveal `0x01773206258d174200a35fc710c30d1e04667c7ed7ed666c5888e268354564a7`; evaluate `0xec28171464f38002dc3bab281d6b2bc0a0a62d6a7768f998ca0152267cb9ca12` | All finalized/success; evaluate NO_MATCH; get_version(4,4) exact readback; no retry because result was not UNKNOWN | PASS; physical-count claim NONE |
+| S08 expiry | NOT_APPLICABLE | 1 | `0xa74f09fae8c3bb0ddf321fcd202220df09d3c586d3c1398ca1d21fe2c7dea087` | Finalized/success; deadline passed; case 3 exact DONE/VOID readback; no model call | PASS; physical-count claim NONE |
+
+### Locked observable action ledger
+
+The following totals are for the retained replacement package's logical
+Studio actions, not physical RPC requests. The two rejected intermediate
+deployments are retained in the ledger because they are part of the replacement
+attempt history; the final contract and its S00–S08 evidence remain the only
+release candidate.
+
+```yaml
+STUDIO_ACTION_LEDGER_SCOPE: retained replacement attempts and final S00-S08 evidence
+STUDIO_ACTIONS: 22
+STUDIO_TRANSACTIONS: 22
+STUDIO_TRANSACTION_HASHES: 22 retained hashes, listed above and in the incident record
+STUDIO_STATUS_POLL_ATTEMPTS: 42 bounded lifecycle observations (39 for final S00-S08 and 3 for the two intermediate candidate deployments; no unbounded polling)
+STUDIO_TERMINAL_RECEIPT_READS: 22
+STUDIO_AUTHORITATIVE_READBACKS: 22
+STUDIO_RETRIES: 1 pre-hash deploy retry; no returned-hash retry
+STUDIO_DUPLICATE_TRANSACTIONS: 1 idempotent S05 create duplicate; no state change
+STUDIO_RATE_LIMIT_EVENTS: 3 retained schema errors in the post-run capability probe; earlier 30/min quota stops retained in diagnostics
+STUDIO_REPEATED_SCHEMA_SOURCE_RELOADS: recorded in the incident/recovery record; no replay or redeploy for measurement
+STUDIO_MATRIX_VARIANCE: "physical requests NOT_APPLICABLE; logical replacement ledger includes two rejected intermediate deployments and one disclosed idempotent duplicate; final S00-S08 semantics and readbacks pass"
+```
+
+| Ledger row | Physical requests if observable | Studio actions | Transactions | Status observations | Terminal receipt reads | Authoritative readbacks | Retries | Duplicate transactions | Result |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| Final replacement S00 deploy | NOT_APPLICABLE | 1 | 1 | 2 | 1 | 2 (code parity, `get_count=0`) | 1 pre-hash | 0 | FINALIZED/SUCCESS; release address retained |
+| Intermediate replacement deployments | NOT_APPLICABLE | 2 | 2 | 3 | 2 | 2 (source parity/disposition) | 0 | 0 | Rejected candidates; never upgrade |
+| S01–S04 MATCH path | NOT_APPLICABLE | 4 | 4 | 8 | 4 | 4 | 0 | 0 | FINALIZED/SUCCESS; exact MATCH history |
+| S05 NO_MATCH path | NOT_APPLICABLE | 5 | 5 | 8 | 5 | 5 | 0 | 1 idempotent | FINALIZED/SUCCESS; exact NO_MATCH history |
+| S06 rejection controls | NOT_APPLICABLE | 5 | 5 | 11 | 5 | 5 | 0 | 0 | FINALIZED/ERROR rollback plus unchanged-state proofs |
+| S07 ambiguity | NOT_APPLICABLE | 4 | 4 | 8 | 4 | 4 | 0 | 0 | FINALIZED/SUCCESS; NO_MATCH, no UNKNOWN retry |
+| S08 expiry | NOT_APPLICABLE | 1 | 1 | 2 | 1 | 1 | 0 | 0 | FINALIZED/SUCCESS; DONE/VOID |
+
+The 42 status observations are the bounded lifecycle observations retained for
+the submitted replacement hashes. UI locator inspection, modal expansion and static
+source/parity inspection are evidence collection, not additional RPC totals.
+The ledger deliberately does not convert any of those observations or the 22
+transactions into a physical-request number.
 
 ## FRONTEND RPC BUDGET MATRIX
 
@@ -129,9 +207,12 @@ and the journal remains the recovery source.
 - Finality, semantic execution success/error and authoritative method-specific readback remain mandatory.
 - Public progress exposes the exact wallet, submission, finality, execution, readback, success, rejection, failure and reconciliation phases; signing disables for the session after a journal lock/storage failure while read/export/reconcile remain available.
 - The journal renders at most four entries per page, keeps all valid/raw entries reachable and exportable, and disables every reconcile control while one write or reconciliation lifecycle is active.
-- Missing or unexplained Studio measurements block `POST_DEPLOY_TEST`; missing
-  exact-release frontend measurements block `POST_GITHUB_VERCEL_FINAL` and
-  public release.
-- `PD-001` is the sole residual reviewer blocker for this current
-  `POST_DEPLOY_TEST` checkpoint. No duplicate write or redeployment may be used
-  to manufacture the missing physical count.
+- Mode-specific Studio evidence is complete for this legacy run: physical
+  requests are `NOT_APPLICABLE`, the action ledger is locked, and no
+  physical-count claim is made. Missing exact-release frontend measurements
+  still block `POST_GITHUB_VERCEL_FINAL` and public release.
+- The prior `PD-001` report is retained as historical review evidence, but its
+  automatic physical-count blocker is answered by the current
+  `OBSERVABLE_ACTION_LEDGER` / `RETROSPECTIVE_LEGACY` route. The same anonymous
+  reviewer must recheck this exact package; no new transaction or redeployment
+  is used to manufacture telemetry.
