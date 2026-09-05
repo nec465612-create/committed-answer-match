@@ -250,6 +250,12 @@ export function requireContractAddress(): string {
   return value;
 }
 
+function rpcContractAddress(value: string): string {
+  const normalized = normalizeAddress(value);
+  const configured = import.meta.env.VITE_CONTRACT_ADDRESS?.trim() ?? "";
+  return ADDRESS_RE.test(configured) && configured.toLowerCase() === normalized ? configured : value.trim();
+}
+
 function requireId(value: string): bigint {
   if (!DECIMAL_RE.test(value) || value === "0") throw new Error("Invalid case ID.");
   return BigInt(value);
@@ -293,13 +299,14 @@ function jsonSafe(value: unknown): unknown {
 
 async function readValue(functionName: string, args: CalldataEncodable[], contractAddress = requireContractAddress(), signal?: AbortSignal): Promise<unknown> {
   const normalizedContract = normalizeAddress(contractAddress);
+  const rpcAddress = rpcContractAddress(contractAddress);
   const key = canonicalJson([chainIdDecimal(), normalizedContract, functionName, jsonSafe(args)]);
   return readRpcBudget.request({
     rowId: "contract-read",
     key,
     signal: signal ?? new AbortController().signal,
     call: () => readClient.readContract({
-      address: normalizedContract as GenLayerAddress,
+      address: rpcAddress as GenLayerAddress,
       functionName,
       args,
       transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
