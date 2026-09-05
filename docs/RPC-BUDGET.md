@@ -13,7 +13,7 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `FRONTEND_MATRIX_STATUS: COMPLETE — exact-release measurement remains a later final gate`
 - `STUDIO_EVIDENCE_STATUS: COMPLETE — replacement S00–S08 logical evidence plus retrospective observable action ledger; no physical-count claim`
 - `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW RECHECK REQUESTED - POST_DEPLOY_TEST`
-- `POST_DEPLOY_REVIEW_RESIDUAL: P1 frontend repair recheck pending — PD-009 cancellation-safe shared in-flight dedupe; PD-006/PD-007 closed and PD-008 repaired locally`
+- `POST_DEPLOY_REVIEW_RESIDUAL: P1 frontend repair recheck pending — PD-010 pre-aborted RPC guard; PD-006/PD-007/PD-008/PD-009 repaired locally`
 - `FRONTEND_EVIDENCE_STATUS: PLAN_AND_MATRIX_READY — no exact-release measurement claimed; physical release measurement and wallet-signed E2E are later POST_GITHUB_VERCEL_FINAL gates`
 
 ```yaml
@@ -236,4 +236,6 @@ and the journal remains the recovery source.
   because the frontend repair delta is now awaiting exact-revision recheck.
   The current delta closes the reported PD-006/PD-007/PD-008 findings locally;
   the follow-up recheck found PD-009 in shared in-flight cancellation and that
-  repair is now locally verified. No new transaction or redeployment was used.
+  repair is now locally verified. The latest guard repair also rejects a
+  pre-aborted caller before cache/in-flight lookup or budget spend; final
+  recheck is pending. No new transaction or redeployment was used.

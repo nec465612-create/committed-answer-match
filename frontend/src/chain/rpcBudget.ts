@@ -105,6 +105,7 @@ export function createRpcBudgetGuard(rows: readonly RpcBudgetRow[]) {
     isRetryable?: (cause: unknown) => boolean;
   }): Promise<T> {
     const budget = row(input.rowId);
+    input.signal.throwIfAborted();
     const scopedKey = `${input.rowId}:${input.key}`;
     const cached = cache.get(scopedKey);
     if (budget.cacheTtlMs > 0 && cached && cached.expiresAt > Date.now()) {

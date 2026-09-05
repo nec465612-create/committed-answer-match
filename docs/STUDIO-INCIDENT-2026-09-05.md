@@ -176,3 +176,13 @@ caller B can request the same key and resolve successfully, and invalidation
 causes a new operation rather than joining stale work. The final reviewer
 recheck remains pending; no Studio action, redeployment or transaction was
 needed.
+
+The reviewer then identified PD-010 at exact HEAD
+`22f9e872c3479d7caf091bf146355461e010818b`: a caller whose AbortSignal was
+already aborted could still create an RPC operation, invoke the transport and
+spend one budget unit before the caller-side race rejected it. The final local
+repair adds an early `throwIfAborted()` before cache lookup, in-flight joining
+or operation creation, plus a regression proving the transport is not called
+and the budget remains unchanged. The affected frontend unit suite now passes
+69 tests and Playwright passes 7 tests; the final anonymous recheck remains
+pending.

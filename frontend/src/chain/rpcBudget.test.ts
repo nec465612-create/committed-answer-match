@@ -83,6 +83,17 @@ describe("frontend RPC budget guard", () => {
     expect(budget.counts()).toEqual({ read: 1 });
   });
 
+  it("does not start an RPC operation for a pre-aborted caller", async () => {
+    const budget = createRpcBudgetGuard([{ id: "read", maxRequests: 1, maxRetries: 0, baseBackoffMs: 1, cacheTtlMs: 0 }]);
+    const controller = new AbortController();
+    controller.abort(new Error("stale session"));
+    const call = vi.fn(async () => "should not run");
+
+    await expect(budget.request({ rowId: "read", key: "fresh", signal: controller.signal, call })).rejects.toThrow("stale session");
+    expect(call).not.toHaveBeenCalled();
+    expect(budget.counts()).toEqual({});
+  });
+
   it("rotates an invalidated in-flight key before a new caller joins", async () => {
     const budget = createRpcBudgetGuard([{ id: "read", maxRequests: 2, maxRetries: 0, baseBackoffMs: 1, cacheTtlMs: 0 }]);
     const values: Array<(value: string) => void> = [];
