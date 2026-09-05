@@ -10,7 +10,7 @@
 | Package identity | `CAM-PREDEPLOY-B255CD33-DELTA-1` |
 | Exact source revision | `b255cd3359ad3a870ba61c370d4133dcd9f96a30` |
 | Status | `ANONYMOUS REVIEW CHANGES REQUIRED — DELTA READY FOR RETAINED REVIEWER` |
-| Anonymous reviewer delivery | `RETAINED ROUTE SUPPLIED; DELTA READY TO SEND` |
+| Anonymous reviewer delivery | `DELTA SENT TO RETAINED REVIEWER ROUTE; FINAL TURN PENDING` |
 | Studionet contract | Not deployed; no address or deployment transaction exists |
 | Studio account | Selected and locked for deployment role: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`; no secret is recorded |
 | GitHub/Vercel targets | Not supplied; no push or hosting release exists |

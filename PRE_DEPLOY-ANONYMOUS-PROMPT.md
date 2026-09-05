@@ -9,7 +9,7 @@ CATEGORY: PROJECT
 CHECKPOINT: PRE_DEPLOY
 REVISION/PACKAGE: source `b255cd3359ad3a870ba61c370d4133dcd9f96a30`; package `CAM-PREDEPLOY-B255CD33-DELTA-1`
 DOCUMENT MODE / BASELINE: full exact-source review from the approved Stage 1/2 baseline
-STATUS: delta ready for delivery on the supplied retained route; do not resend first contact
+STATUS: delta sent on the supplied retained route; final reviewer turn pending
 
 ## Objective and acceptance criteria
 
