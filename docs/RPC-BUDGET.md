@@ -12,8 +12,8 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `STUDIO_MATRIX_STATUS: COMPLETE — OBSERVABLE_ACTION_LEDGER`
 - `FRONTEND_MATRIX_STATUS: READY_FOR_POST_DEPLOY_MEASUREMENT`
 - `STUDIO_EVIDENCE_STATUS: COMPLETE — replacement S00–S08 logical evidence plus retrospective observable action ledger; no physical-count claim`
-- `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS RECHECK REQUESTED — POST_DEPLOY_TEST`
-- `POST_DEPLOY_REVIEW_RESIDUAL: prior PD-001 physical-count finding is answered by the declared legacy measurement mode; reviewer recheck pending`
+- `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST`
+- `POST_DEPLOY_REVIEW_RESIDUAL: NONE — PD-001 and PD-005 closed under the current legacy measurement route`
 - `FRONTEND_EVIDENCE_STATUS: PLAN_AND_MATRIX_READY — no exact-release measurement claimed; physical release measurement and wallet-signed E2E are later POST_GITHUB_VERCEL_FINAL gates`
 
 ## STUDIO RPC MEASUREMENT CAPABILITY PROBE
@@ -214,5 +214,7 @@ and the journal remains the recovery source.
 - The prior `PD-001` report is retained as historical review evidence, but its
   automatic physical-count blocker is answered by the current
   `OBSERVABLE_ACTION_LEDGER` / `RETROSPECTIVE_LEGACY` route. The same anonymous
-  reviewer must recheck this exact package; no new transaction or redeployment
-  is used to manufacture telemetry.
+  reviewer rechecked exact package HEAD `086cddd663f8762c4b4d15d919344ef1763aced4`
+  and returned `ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST`; `PD-001` and
+  `PD-005` are closed. No new transaction or redeployment was used to
+  manufacture telemetry.

@@ -102,13 +102,17 @@ replaying any write.
 
 ## Current checkpoint disposition
 
-The retained reviewer rechecked commit `4734fc290cd0838126884e558f63c8f50a8318b9`
+The retained reviewer first rechecked commit `4734fc290cd0838126884e558f63c8f50a8318b9`
 and returned exactly `ANONYMOUS REVIEW CHANGES REQUIRED - POST_DEPLOY_TEST`.
 PD-002 (expiry), PD-003 (UNKNOWN/retry disposition), and PD-004 (frontend
-stage wording) are closed. The report's PD-001 physical-count finding was made
-before the current explicit legacy evidence route was applied. It remains
-historical review evidence, not an approval; this package requests the same
-reviewer to recheck the declared mode and complete ledger.
+stage wording) were closed. The report's PD-001 physical-count finding was
+made before the current explicit legacy evidence route was applied, so it is
+retained as historical review evidence.
+
+The same reviewer then rechecked exact package HEAD
+`086cddd663f8762c4b4d15d919344ef1763aced4` and returned exactly
+`ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST`. PD-001 and PD-005 are closed;
+the observable ledger is accepted without a physical-count claim.
 
 As a bounded recovery probe, a newly opened `/run-debug` Studio tab was loaded
 once after the retained tab had been removed from the Browser runtime. The

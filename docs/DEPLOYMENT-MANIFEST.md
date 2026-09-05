@@ -1,6 +1,6 @@
 # Committed Answer Match — Replacement Deployment Manifest
 
-`MANIFEST_STATUS: REPLACEMENT_DEPLOYED — POST_DEPLOY_TEST_RECHECK_REQUESTED`
+`MANIFEST_STATUS: REPLACEMENT_DEPLOYED — POST_DEPLOY_TEST_APPROVED`
 
 This secret-free manifest is the deployment/recovery binding for the exact
 reviewed source. It is not a deployment receipt and contains no private key,
@@ -85,12 +85,12 @@ REPLACEMENT_SEMANTIC_EXECUTION: SUCCESS; consensus Accepted
 REPLACEMENT_SOURCE_PARITY: exact deployed payload SHA256 equals 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
 REPLACEMENT_INITIAL_COUNT_READBACK: 0 at Finalized
 POST_DEPLOY_STUDIO_E2E: S01 MATCH, S05 NO_MATCH, S06 rejection controls, S07 terminal NO_MATCH, S08 VOID expiry
-POST_DEPLOY_STUDIO_E2E_REMAINING: logical S00-S08 journeys complete; retrospective OBSERVABLE_ACTION_LEDGER recorded; reviewer recheck pending
+POST_DEPLOY_STUDIO_E2E_REMAINING: NONE — logical S00-S08 journeys complete; retrospective OBSERVABLE_ACTION_LEDGER recorded and accepted
 STUDIO_MEASUREMENT_MODE: OBSERVABLE_ACTION_LEDGER
 STUDIO_MEASUREMENT_TIMING: RETROSPECTIVE_LEGACY
 PHYSICAL_STUDIO_REQUEST_COUNT: NONE CLAIMED — physical telemetry unavailable
-POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS RECHECK REQUESTED — POST_DEPLOY_TEST
-POST_DEPLOY_REVIEW_RESIDUAL: prior PD-001 physical-count finding answered by the current legacy ledger route; exact reviewer recheck pending
+POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST
+POST_DEPLOY_REVIEW_RESIDUAL: NONE — PD-001 and PD-005 closed; exact legacy ledger accepted
 ```
 
 The two intermediate replacement candidates are rejected and must not be
