@@ -375,6 +375,13 @@ function executionResultName(value: unknown): string | undefined {
   return undefined;
 }
 
+export function parseTransactionStatus(raw: unknown): string | undefined {
+  if (typeof raw === "string" || typeof raw === "number") return statusName(raw);
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined;
+  const body = raw as { status?: unknown; statusCode?: unknown };
+  return statusName(body.status) ?? statusName(body.statusCode);
+}
+
 function returnedCaseId(value: unknown): string | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const transaction = value as { consensus_data?: { leader_receipt?: unknown[] } };
@@ -395,11 +402,9 @@ async function lightweightTransactionStatus(client: ReturnType<typeof createClie
     rowId: "transaction-status",
     key: hash,
     signal: signal ?? new AbortController().signal,
-    call: () => request({ method: "gen_getTransactionStatus", params: [{ txId: hash }] }),
+    call: () => request({ method: "gen_getTransactionStatus", params: [hash] }),
   });
-  if (typeof response !== "object" || response === null) throw new Error("Transaction status response is invalid.");
-  const body = response as { status?: unknown; statusCode?: unknown };
-  const name = statusName(body.status) ?? statusName(body.statusCode);
+  const name = parseTransactionStatus(response);
   if (!name) throw new Error("Transaction status response is invalid.");
   return name;
 }

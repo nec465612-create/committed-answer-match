@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { normalizeText, parseTransactionReceipt, validateContractText } from "./contract";
+import { normalizeText, parseTransactionReceipt, parseTransactionStatus, validateContractText } from "./contract";
 
 describe("read request safeguards", () => {
   it("normalizes CRLF before a reveal is hashed or submitted", () => {
@@ -41,5 +41,12 @@ describe("transaction receipt parsing", () => {
 
   it("does not treat a non-final receipt as terminal", () => {
     expect(parseTransactionReceipt({ status: 5, statusName: "Accepted" })).toBeNull();
+  });
+});
+
+describe("transaction status parsing", () => {
+  it("accepts both legacy primitive and documented object responses", () => {
+    expect(parseTransactionStatus("Finalized")).toBe("FINALIZED");
+    expect(parseTransactionStatus({ status: "Finalized", statusCode: 7 })).toBe("FINALIZED");
   });
 });
