@@ -80,6 +80,10 @@ The journal is a local recovery record, not the chain authority.
 - A hash-bearing entry may reconcile only the same transaction hash.
 - A hashless entry may perform one nonce/history lookup to classify
   `PRESENT`, `ABSENT`, `COMPETING` or `UNKNOWN`; it is never replayed.
+- Any rejected journal lock request or storage read/write failure latches
+  signing off for the session. The visible hash and volatile recovery record
+  remain available when possible; read, export and same-hash reconciliation
+  stay allowed, but no second submission is permitted.
 - No pending/ambiguous entry is automatically resubmitted. Final success
   still requires finality, semantic execution success and exact authoritative
   readback.

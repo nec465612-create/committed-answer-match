@@ -7,8 +7,8 @@
 | Workflow | Build |
 | Category | `PROJECT` |
 | Checkpoint | `PRE_DEPLOY` |
-| Package identity | `CAM-PREDEPLOY-B70E5CC-DELTA-2` |
-| Exact source revision | `b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce` |
+| Package identity | `CAM-PREDEPLOY-25A10BC-DELTA-3` |
+| Exact source revision | `25a10bc87230e04d74c4b3459bf42122c911f86b` |
 | Status | `ANONYMOUS REVIEW CHANGES REQUIRED — CORRECTIVE DELTA READY FOR RETAINED REVIEWER` |
 | Anonymous reviewer delivery | `NOT YET SENT — exact corrective package prepared` |
 | Studionet contract | Not deployed; no address or deployment transaction exists |
@@ -47,25 +47,27 @@ The current implementation is a single `CommittedAnswerMatch` contract plus a Re
 contracts/main.py 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
 contract-schema.json B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
 tests/test_contract.py 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
-frontend/src/App.tsx F63CBA37901D6516061456B08D32C44759A37E3A19E68FC5BCE5EFD33653ED2F
-frontend/src/styles.css A7413DC9BB6A7108DA0AE396DC7948AB53E42E992BBEFADFBCBFA64D12D22887
-frontend/src/contract.ts 2437F451292672F3EBF7B0E4CCDE84DAACA7673308FF558DEB0B72537C4A7699
-frontend/src/contract.test.ts CD0E80D741F06170CB02DF6208D0F34F89F49FD889F7E6570D14C25599F15A92
-frontend/src/pending.ts C97FB044A2D150AD333FFBFFB6ED11A0043555C09B6335EFE38075A2D7C26727
+frontend/src/App.tsx 5043913E938BB8C6997CB096A03F7E418B89F12C38DE9477CDEC38EE07F3EE4B
+frontend/src/styles.css 52BBA92FA00F30128AFB3CA6BCE28B7945438C8026E3E8D85C5D757585AB2331
+frontend/src/contract.ts 3CDF41EDEB81B7BF5AD8DCC1F20B3AC7C2001078A7BC0EAE75A439604CFD25FF
+frontend/src/contract.test.ts C0F3D2A7175A7444D1800126762F12B27661BBE244D5BCBC3557D0B806BDAAFB
+frontend/src/pending.ts 7FAB70B7F7B5DBF048FB3B0FA044E5A4842CCD9510062465B486F81A0877C02F
 frontend/src/pending.test.ts 1F4C1BA21A34D906580532E84839B0DCDC47AE08FE43D2BC27BCC031694D91DF
-frontend/src/chain/writeCoordinator.ts B4F78BD70F1F2CA16C482D5795BE1385B7F157E7558358C714F39600E8126EB0
-frontend/src/chain/writeCoordinator.test.ts 559CE7BBADC4A74854DAEED80BDC425D4CF19AFF4D8A66D8EBCAB9946A9A55B3
+frontend/src/chain/writeCoordinator.ts 11614B4A1414EC82D99941C3C564877CCD918755ACEFCFBAD51D8C2A43931F57
+frontend/src/chain/writeCoordinator.test.ts 1ECC688E9FEE08F3B2D0EC7AEC2043C9914CFFAEBEF3912B221EC4B393110B0E
 frontend/src/verification.ts 2A5AFFE777DA95CDF1B9CE673B6EF01A7260613312D1B01C34D0111E803E06A1
 frontend/src/verification.test.ts 53AAC0212A6697202CCAA03E2398F3C36D904CCD42433D4F54D483E0FC7AB03B
 frontend/src/wallet/providers.ts A519ADB2FF99637EC51012F849B34583F48C182E85DEECD66F5046C037667A91
 frontend/src/wallet/connection.ts 7615F7B529BE0553EF3146B1E27E6414ED9BCB2B2565DE81B4CF5AC6C14A7773
+frontend/src/components/TransactionProgress.tsx DE619CBCB405A1284B3C3023C8DDAABE1ADFC25949320779E5FA13FB1C09140F
+frontend/src/transactionProgress.test.ts 04B3E1AE759423C90A59A7B0E58EF35C1CD4DC8DC873BCEF097A434278C44B13
 frontend/tests/flow.spec.ts AF13FB3D63B4CB6900BF3951F69D231CCF77B253BE310BEB51C4F2AC9D1AC121
-docs/RPC-BUDGET.md 0BAC42325D794C21C78F75D2D26E4E4B9B4CD3BE598477CC5D27DC1CC5B83C42
-docs/DEPLOYMENT-MANIFEST.md 3D4E30B0E5C70DA7E8AB71D220DB74B91C152CB5561E349AA54B6FD68173263F
-docs/RECOVERY-RUNBOOK.md FD8FC2B161045C0F3272D6A81356F39D5AB5468516E42BCE77767DD7977901F9
+docs/RPC-BUDGET.md A3FB15BDEFAE7584B0C064ED136BCA588FFF068BBD7F921A9731BB0443D4A5A6
+docs/DEPLOYMENT-MANIFEST.md 4F4C39BEFB64EBB8461BBE8F886732F306220E63224B767DE6999B5DC8CF94FF
+docs/RECOVERY-RUNBOOK.md BFBD29C2C37428EADB27A4FE7B9948BA1CB9EAEB1F46A07638CF6681C7232CC6
 ~~~
 
-The implementation source revision is b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce. It closes the retained reviewer delta with exact pre-state-bound transitions, strict deadline advancement, competing/finalized-error classification, hashless lookup, raw journal recovery, hidden-tab pause, full journal rendering, byte/control-equivalent frontend validation, and the separate Studio plus frontend RPC budgets. The user-frozen contract itself remains unchanged by any later deployment action.
+The implementation source revision is 25a10bc87230e04d74c4b3459bf42122c911f86b. It closes the retained reviewer delta with exact pre-state-bound transitions, strict deadline advancement, competing/finalized-error classification, hashless lookup, raw journal recovery, hidden-tab pause, full journal rendering, byte/control-equivalent frontend validation, exact public transaction progress, journal health latching, and the separate Studio plus frontend RPC budgets. The user-frozen contract itself remains unchanged by any later deployment action.
 
 ## Runtime, documentation, and technical decisions
 
@@ -151,18 +153,20 @@ The following commands were executed against this exact source revision:
 
 | Layer | Command | Result |
 |---|---|---|
-| Contract deterministic/direct | `$env:PYTHONIOENCODING='utf-8'; py -3.13 -m pytest tests\\test_contract.py -q -p no:cacheprovider` | `12 passed in 0.53s` |
+| Contract deterministic/direct | `$env:PYTHONIOENCODING='utf-8'; py -3.13 -m pytest tests\\test_contract.py -q -p no:cacheprovider` | `12 passed in 0.38s` |
 | Contract lint | `genvm-lint check contracts\\main.py` | `Lint passed (3 checks)` |
 | Contract validation | `genvm-lint validate contracts\\main.py` | `Validation passed; CommittedAnswerMatch; 13 methods (7 view, 6 write)` |
 | Schema | `genvm-lint schema --json -o contract-schema.json contracts\\main.py` | `Schema written` |
-| Frontend unit | `npm test -- --run` from `frontend` | `6 files passed; 38 tests passed` |
+| Frontend unit | `npm test -- --run` from `frontend` | `7 files passed; 48 tests passed` |
 | Frontend type check | `npx tsc --noEmit` from `frontend` | Pass |
-| Frontend build | `npm run build` from `frontend` | `Vite build passed; 5437 modules; non-blocking >500 kB chunk warning` |
+| Frontend build | `npm run build` from `frontend` | `Vite build passed; 5438 modules; non-blocking >500 kB chunk warning` |
 | Browser E2E | `npm run test:e2e` from `frontend` | `5 passed` |
 | Closure serialization | `cloudpickle.dumps` of captured leader and validator with `VMContext.check_pickling=True` | Passed in the installed Direct Mode runtime; no pickling error |
 | Static trust scans | bounded `rg` scans for forbidden provider singleton and journal-key derivation | No forbidden matches |
 
 The contract tests cover idempotent context-bound creation, authorization, wrong phase, stale revision, atomic bad reveal, exact match, consensus NO_MATCH, deliberate validator disagreement, malformed consensus, UNKNOWN/cooldown/exhaustion, explicit void expiry, inclusive deadline behavior, wrong chain context, bounded lists, and production-shaped closure serialization.
+
+The frontend transaction indicator is driven by actual coordinator events and exposes the required `IDLE`, `WAITING_FOR_WALLET`, `SUBMITTED`, `WAITING_FOR_FINALITY`, `VERIFYING_EXECUTION`, `VERIFYING_READBACK`, `SUCCESS`, `REJECTED`, `FAILED` and `RECONCILIATION_REQUIRED` phases. It retains a returned hash with copy and verified Studionet Explorer actions, and a journal lock/storage failure latches signing off while read/export/reconcile remain available.
 
 ## Separate RPC budget gate
 

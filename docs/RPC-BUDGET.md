@@ -4,7 +4,7 @@ This file is the project-specific pre-action matrix required by the canonical `S
 
 ## Applicability
 
-- `RPC_BUDGET_REVISION: b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce`
+- `RPC_BUDGET_REVISION: 25a10bc87230e04d74c4b3459bf42122c911f86b`
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
@@ -53,7 +53,7 @@ At this checkpoint every row is explicitly not run. There is no deployment, tran
 
 ## FRONTEND RPC BUDGET MATRIX
 
-The frontend has one shared `genlayer-js` read client for the configured Studionet chain/contract. Read deduplication is in-flight only; there is no stale persistent cache for transaction state, authorization, balances or verdicts. A write creates a durable journal record before wallet UI and never submits a second transaction for the same authorization/hash.
+The frontend has one shared `genlayer-js` read client for the configured Studionet chain/contract. Read deduplication is in-flight only; there is no stale persistent cache for transaction state, authorization, balances or verdicts. A write creates a durable journal record before wallet UI and never submits a second transaction for the same authorization/hash. The public transaction indicator is driven by the exact lifecycle phases in `FRONTEND.TRANSACTION_PROGRESS`; a hash is retained through finality, execution and authoritative readback, including storage-degraded reconciliation.
 
 | Screen/workflow | Request source | RPC method | Trigger | Cache key / TTL | In-flight dedupe | Invalidation | Poll interval / attempts | Retry/backoff/cancel | Planned maximum | Transaction count | Terminal/readback condition |
 |---|---|---|---|---|---|---|---|---|---:|---:|---|
@@ -87,4 +87,5 @@ The following is the local evidence available before deployment. It is not a cla
 - 429/server-busy/transient failures are bounded, honor `Retry-After` when exposed and never trigger immediate recursive or concurrent retries.
 - A returned hash is stored before verification; no automatic replacement or duplicate submission occurs.
 - Finality, semantic execution success/error and authoritative method-specific readback remain mandatory.
+- Public progress exposes the exact wallet, submission, finality, execution, readback, success, rejection, failure and reconciliation phases; signing disables for the session after a journal lock/storage failure while read/export/reconcile remain available.
 - Missing or unexplained measurements block `POST_DEPLOY_TEST` and release.
