@@ -42,6 +42,16 @@ describe("transaction receipt parsing", () => {
   it("does not treat a non-final receipt as terminal", () => {
     expect(parseTransactionReceipt({ status: 5, statusName: "Accepted" })).toBeNull();
   });
+
+  it("accepts the legacy explorer execution aliases", () => {
+    expect(parseTransactionReceipt({ status: "FINALIZED", resultName: "SUCCESS" })).toMatchObject({
+      statusName: "FINALIZED",
+      txExecutionResultName: "FINISHED_WITH_RETURN",
+    });
+    expect(parseTransactionReceipt({ status: "FINALIZED", txExecutionResultName: "Return" })).toMatchObject({
+      txExecutionResultName: "FINISHED_WITH_RETURN",
+    });
+  });
 });
 
 describe("transaction status parsing", () => {

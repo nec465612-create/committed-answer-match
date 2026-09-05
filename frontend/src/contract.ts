@@ -369,6 +369,8 @@ function executionResultName(value: unknown): string | undefined {
       .replace(/[\s-]+/g, "_")
       .toUpperCase();
     if (EXECUTION_RESULT_NAMES.includes(normalized)) return normalized;
+    if (["RETURN", "SUCCESS", "FINISHED", "FINISHED_RETURN"].includes(normalized)) return ExecutionResult.FINISHED_WITH_RETURN;
+    if (["ERROR", "FAILURE", "FAILED", "FINISHED_ERROR"].includes(normalized)) return ExecutionResult.FINISHED_WITH_ERROR;
     const numeric = Number(value);
     return Number.isInteger(numeric) ? EXECUTION_RESULT_NAMES[numeric] : undefined;
   }
@@ -415,7 +417,14 @@ export function parseTransactionReceipt(raw: unknown): ContractReceipt | null {
   const value = raw as Record<string, unknown>;
   const finalStatus = statusName(value.statusName ?? value.status_name ?? value.status);
   if (finalStatus !== TransactionStatus.FINALIZED) return null;
-  const execution = executionResultName(value.txExecutionResultName ?? value.tx_execution_result_name ?? value.txExecutionResult ?? value.tx_execution_result ?? value.result);
+  const leaderReceipt = (value.consensus_data as { leader_receipt?: unknown[] } | undefined)?.leader_receipt;
+  const leaderExecution = Array.isArray(leaderReceipt) && leaderReceipt.length > 0 && typeof leaderReceipt[0] === "object" && leaderReceipt[0] !== null
+    ? (leaderReceipt[0] as { execution_result?: unknown }).execution_result
+    : undefined;
+  const execution = executionResultName(
+    value.txExecutionResultName ?? value.tx_execution_result_name ?? value.txExecutionResult ?? value.tx_execution_result ??
+    value.resultName ?? (typeof value.result === "string" ? value.result : undefined) ?? leaderExecution,
+  );
   const id = typeof value.id === "string" ? value.id : undefined;
   return {
     statusName: finalStatus,
