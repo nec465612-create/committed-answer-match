@@ -5,10 +5,14 @@ import { DurableJournal, canonicalJson, journalKey, type JournalStorage, type Lo
 
 class MemoryStorage implements JournalStorage {
   private readonly values = new Map<string, string>();
+  failWrites = false;
   get length(): number { return this.values.size; }
   key(index: number): string | null { return [...this.values.keys()][index] ?? null; }
   getItem(key: string): string | null { return this.values.get(key) ?? null; }
-  setItem(key: string, value: string): void { this.values.set(key, value); }
+  setItem(key: string, value: string): void {
+    if (this.failWrites) throw new Error("storage write failed");
+    this.values.set(key, value);
+  }
   removeItem(key: string): void { this.values.delete(key); }
 }
 
@@ -107,6 +111,85 @@ describe("executeWrite", () => {
     expect(outcome.status).toBe("FINALIZED_ERROR");
     expect(preReads).toBe(0);
     expect((await journal.list())[0].resolution_json).toBe(canonicalJson({ classification: "COMPETING", revision: "4" }));
+  });
+
+  it("keeps unknown finalized-error readback in reconciliation", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const detailJson = canonicalJson({ classification: "UNKNOWN", reason: "invalid_post_state" });
+    const outcome = await executeWrite(
+      plan({
+        pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_ERROR" }),
+        verifyFinalizedError: async () => ({ classification: "UNKNOWN", detailJson }),
+        verifyPre: async () => true,
+      }),
+      { journal, sleep: async () => undefined },
+    );
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect((await journal.list())[0]).toMatchObject({ status: "RECONCILE", resolution_json: detailJson });
+  });
+
+  it("keeps unknown finalized-error resume in reconciliation", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const original = await journal.createSigning(journalInput);
+    const submitted = await journal.update(journalKey(original.reservation), {
+      ...original,
+      status: "RECONCILE",
+      tx_hash: "0x" + "b".repeat(64),
+    });
+    const detailJson = canonicalJson({ classification: "UNKNOWN", reason: "invalid_post_state" });
+    const outcome = await reconcileWrite({
+      journal: submitted,
+      pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_ERROR" }),
+      verifyPost: async () => false,
+      verifyPre: async () => true,
+      verifyFinalizedError: async () => ({ classification: "UNKNOWN", detailJson }),
+    }, { journal });
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect((await journal.list())[0]).toMatchObject({ status: "RECONCILE", resolution_json: detailJson });
+  });
+
+  it("latches signing off and retains the returned hash after storage failure", async () => {
+    const storage = new MemoryStorage();
+    const journal = new DurableJournal(storage, new ImmediateLocks());
+    let submitCalls = 0;
+    const outcome = await executeWrite(
+      plan({
+        submit: async () => {
+          submitCalls += 1;
+          storage.failWrites = true;
+          return "0x" + "c".repeat(64);
+        },
+      }),
+      { journal, sleep: async () => undefined },
+    );
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect(journal.signingAvailable).toBe(false);
+    expect((await journal.list())[0]).toMatchObject({ status: "RECONCILE", tx_hash: "0x" + "c".repeat(64) });
+    await expect(executeWrite(plan({ submit: async () => { submitCalls += 1; return "0x" + "d".repeat(64); } }), { journal, sleep: async () => undefined })).rejects.toMatchObject({ kind: "lock" });
+    expect(submitCalls).toBe(1);
+  });
+
+  it("latches signing off when the lock request is rejected", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), { request: async () => { throw new Error("lock rejected"); } });
+    await expect(executeWrite(plan(), { journal, sleep: async () => undefined })).rejects.toMatchObject({ kind: "lock" });
+    expect(journal.signingAvailable).toBe(false);
+  });
+
+  it("emits the evidence-driven public progress sequence", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const phases: string[] = [];
+    await executeWrite(plan({ progress: ({ phase }) => phases.push(phase) }), { journal, sleep: async () => undefined });
+    expect(phases).toEqual([
+      "WAITING_FOR_WALLET",
+      "SUBMITTED",
+      "WAITING_FOR_FINALITY",
+      "VERIFYING_EXECUTION",
+      "VERIFYING_READBACK",
+      "SUCCESS",
+    ]);
   });
 
   it("does one authoritative readback after finality and then preserves reconcile", async () => {

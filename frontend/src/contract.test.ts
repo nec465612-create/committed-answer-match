@@ -33,4 +33,10 @@ describe("read request safeguards", () => {
     expect(() => validateContractText("", 512)).toThrow();
     expect(validateContractText("", 256, true)).toBe("");
   });
+
+  it("rejects unpaired UTF-16 surrogates before a wallet request", () => {
+    expect(() => validateContractText("high\ud800", 512)).toThrow();
+    expect(() => validateContractText("low\udc00", 512)).toThrow();
+    expect(validateContractText("paired\ud83d\ude00", 512)).toBe("paired\ud83d\ude00");
+  });
 });

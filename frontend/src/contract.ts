@@ -147,10 +147,28 @@ export function normalizeText(value: unknown): string {
   return value.replace(/\r\n/g, "\n");
 }
 
+function hasUnpairedSurrogate(value: string): boolean {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(index + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        index += 1;
+      } else {
+        return true;
+      }
+    } else if (code >= 0xdc00 && code <= 0xdfff) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function hasValidContractText(value: unknown, maximum: number, allowEmpty: boolean): value is string {
   if (typeof value !== "string") return false;
   const normalized = normalizeText(value);
   if (normalized !== value || (!allowEmpty && normalized.length === 0)) return false;
+  if (hasUnpairedSurrogate(normalized)) return false;
   if (new TextEncoder().encode(normalized).byteLength > maximum) return false;
   for (const character of normalized) {
     const code = character.charCodeAt(0);

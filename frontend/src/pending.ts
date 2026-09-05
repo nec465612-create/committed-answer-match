@@ -295,6 +295,8 @@ function storageError(): never {
 export class DurableJournal {
   private readonly storage: JournalStorage | null;
   private readonly locks: LockManagerLike | null;
+  private readonly volatileRecovery = new Map<string, JournalRecord>();
+  private signingHealthy = true;
 
   constructor(storage: JournalStorage | null, locks: LockManagerLike | null) {
     this.storage = storage;
@@ -311,7 +313,11 @@ export class DurableJournal {
   }
 
   get signingAvailable(): boolean {
-    return this.storage !== null && this.locks !== null && typeof this.locks.request === "function";
+    return this.signingHealthy && this.storage !== null && this.locks !== null && typeof this.locks.request === "function";
+  }
+
+  rememberRecovery(record: JournalRecord): void {
+    this.volatileRecovery.set(record.reservation, record);
   }
 
   async createSigning(input: SigningInput): Promise<JournalRecord> {
@@ -419,6 +425,7 @@ export class DurableJournal {
       try {
         this.storage?.removeItem(key);
         this.writeIndexLocked(records.filter((record) => journalKey(record.reservation) !== key));
+        this.volatileRecovery.delete(current.reservation);
       } catch {
         storageError();
       }
@@ -437,6 +444,7 @@ export class DurableJournal {
       try {
         this.storage?.removeItem(key);
         this.writeIndexLocked(records.filter((record) => journalKey(record.reservation) !== key));
+        this.volatileRecovery.delete(current.reservation);
       } catch {
         storageError();
       }
@@ -445,13 +453,16 @@ export class DurableJournal {
 
   private async withLock<T>(task: () => Promise<T>): Promise<T> {
     if (!this.locks || typeof this.locks.request !== "function") {
+      this.signingHealthy = false;
       throw new JournalError("Journal lock unavailable.", "lock");
     }
     try {
       const result = await this.locks.request(JOURNAL_LOCK_NAME, { mode: "exclusive" }, async () => task());
       return result as T;
     } catch (error) {
-      if (error instanceof JournalError && error.kind !== "lock") throw error;
+      if (error instanceof JournalError && (error.kind === "conflict" || error.kind === "capacity")) throw error;
+      this.signingHealthy = false;
+      if (error instanceof JournalError && error.kind === "data") throw error;
       throw new JournalError("Journal lock unavailable.", "lock");
     }
   }
@@ -497,8 +508,11 @@ export class DurableJournal {
           });
         }
       }
-      return { records: sortRecords(records), unknown };
+      const merged = new Map(records.map((record) => [record.reservation, record]));
+      for (const record of this.volatileRecovery.values()) merged.set(record.reservation, record);
+      return { records: sortRecords([...merged.values()]), unknown };
     } catch (error) {
+      this.signingHealthy = false;
       if (error instanceof JournalError) throw error;
       fail("Journal data could not be read.");
     }
@@ -512,6 +526,7 @@ export class DurableJournal {
       const records = previous.filter((item) => journalKey(item.reservation) !== key);
       records.push(record);
       this.writeIndexLocked(records);
+      this.volatileRecovery.delete(record.reservation);
     } catch {
       storageError();
     }

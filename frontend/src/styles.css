@@ -165,6 +165,24 @@ a { color: inherit; }
 .notice-error { color: #93483c; background: #fff0ec; border: 1px solid #f0d2c9; }
 .notice button { border: 0; background: transparent; color: inherit; padding: 0; }
 
+.transaction-progress { display: grid; gap: 13px; margin: 18px 0 0; padding: 16px 17px; border: 1px solid #cbded5; border-radius: 13px; background: #f7fbf8; color: var(--green-dark); }
+.transaction-progress--rejected, .transaction-progress--failed { border-color: #f0d2c9; background: #fff7f4; color: #93483c; }
+.transaction-progress--reconciliation_required { border-color: #ead9c8; background: #fffaf5; color: #80533f; }
+.transaction-progress__heading { display: flex; align-items: flex-start; gap: 12px; }
+.transaction-progress__phase { display: block; margin-bottom: 3px; color: var(--muted); font-size: 9px; font-weight: 850; letter-spacing: 0.1em; }
+.transaction-progress__heading strong { display: block; font-size: 13px; }
+.transaction-progress__heading p, .transaction-progress__warning { margin: 4px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; }
+.transaction-progress__message { color: inherit !important; }
+.transaction-progress__spinner { width: 19px; height: 19px; flex: 0 0 auto; border: 2px solid currentColor; border-right-color: transparent; border-radius: 999px; animation: transaction-progress-spin 0.8s linear infinite; }
+.transaction-progress__hash { display: grid; gap: 6px; padding-top: 11px; border-top: 1px solid rgba(47, 119, 93, 0.15); }
+.transaction-progress__hash > span { color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.transaction-progress__hash code { display: block; max-width: 100%; overflow-wrap: anywhere; color: var(--ink); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 11px; line-height: 1.5; }
+.transaction-progress__actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.transaction-progress__actions button, .transaction-progress__actions a { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; color: var(--ink); background: #fff; font-size: 11px; font-weight: 750; text-decoration: none; }
+.transaction-progress__actions button:hover, .transaction-progress__actions a:hover { border-color: #a9b7c1; background: #fbfcfb; }
+@keyframes transaction-progress-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .transaction-progress__spinner { animation: none; border-right-color: currentColor; } }
+
 .modal-backdrop { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 20px; background: rgba(24, 38, 55, 0.36); backdrop-filter: blur(4px); }
 .wallet-modal { width: min(470px, 100%); padding: 25px; border: 1px solid #d8e0e2; border-radius: 18px; background: #fff; box-shadow: 0 28px 70px rgba(24, 38, 55, 0.2); }
 .modal-heading h2 { margin: 7px 0 0; font-size: 25px; letter-spacing: -0.05em; }

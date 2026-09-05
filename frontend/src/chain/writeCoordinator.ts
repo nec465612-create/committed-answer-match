@@ -13,6 +13,7 @@ export interface WritePlan {
   verifyPost: () => Promise<boolean>;
   verifyPre: () => Promise<boolean>;
   verifyFinalizedError?: () => Promise<ResolutionEvidence | null>;
+  progress?: (event: WriteProgress) => void;
 }
 
 export interface ReconcilePlan {
@@ -22,9 +23,31 @@ export interface ReconcilePlan {
   verifyPre: () => Promise<boolean>;
   verifyFinalizedError?: () => Promise<ResolutionEvidence | null>;
   lookupNoHash?: () => Promise<ResolutionEvidence | null>;
+  progress?: (event: WriteProgress) => void;
 }
 
 export type ResolutionClass = "UNCHANGED" | "COMPETING" | "PRESENT" | "ABSENT" | "UNKNOWN";
+
+export type WritePhase =
+  | "IDLE"
+  | "WAITING_FOR_WALLET"
+  | "SUBMITTED"
+  | "WAITING_FOR_FINALITY"
+  | "VERIFYING_EXECUTION"
+  | "VERIFYING_READBACK"
+  | "SUCCESS"
+  | "REJECTED"
+  | "FAILED"
+  | "RECONCILIATION_REQUIRED";
+
+export interface WriteProgress {
+  phase: WritePhase;
+  hash?: string;
+  message?: string;
+  persistenceDegraded?: boolean;
+}
+
+export const INITIAL_WRITE_PROGRESS: WriteProgress = { phase: "IDLE" };
 
 export interface ResolutionEvidence {
   classification: ResolutionClass;
@@ -159,6 +182,14 @@ function delayedRetry(baseMilliseconds: number, error: unknown): number {
   return Math.min(MAX_RETRY_AFTER_MS, Math.max(baseMilliseconds, retryAfter) + Math.floor(Math.random() * 200));
 }
 
+function isTerminalResolution(evidence: ResolutionEvidence): boolean {
+  return evidence.classification === "UNCHANGED" || evidence.classification === "PRESENT" || evidence.classification === "COMPETING";
+}
+
+function emitProgress(progress: ((event: WriteProgress) => void) | undefined, event: WriteProgress): void {
+  progress?.(event);
+}
+
 async function updateStatus(
   journal: DurableJournal,
   current: JournalRecord,
@@ -177,6 +208,7 @@ export async function executeWrite(plan: WritePlan, options: CoordinatorOptions)
   const receiptDelays = [...(options.receiptDelays ?? DEFAULT_RECEIPT_DELAYS)].slice(0, MAX_RECEIPT_QUERIES);
   let current = await options.journal.createSigning(plan.journal);
   const key = journalKey(current.reservation);
+  let transactionHash: string | null = null;
 
   const update = async (status: JournalRecord["status"], fields: { txHash?: string; resolutionJson?: string } = {}): Promise<void> => {
     current = await options.journal.update(key, {
@@ -187,29 +219,74 @@ export async function executeWrite(plan: WritePlan, options: CoordinatorOptions)
     });
   };
 
-  let transactionHash: string;
+  const retainReconciliation = async (message?: string, resolutionJson?: string): Promise<JournalRecord> => {
+    const fallback: JournalRecord = {
+      ...current,
+      status: "RECONCILE",
+      ...(transactionHash !== null ? { tx_hash: transactionHash } : {}),
+      ...(resolutionJson !== undefined ? { resolution_json: resolutionJson } : {}),
+    };
+    try {
+      await update("RECONCILE", {
+        ...(transactionHash !== null ? { txHash: transactionHash } : {}),
+        ...(resolutionJson !== undefined ? { resolutionJson } : {}),
+      });
+    } catch {
+      current = fallback;
+      options.journal.rememberRecovery(current);
+    }
+    emitProgress(plan.progress, {
+      phase: "RECONCILIATION_REQUIRED",
+      ...(transactionHash !== null ? { hash: transactionHash } : {}),
+      ...(message ? { message } : {}),
+      ...(transactionHash !== null ? { persistenceDegraded: !options.journal.signingAvailable } : {}),
+    });
+    return current;
+  };
+
   try {
+    emitProgress(plan.progress, { phase: "WAITING_FOR_WALLET" });
     transactionHash = normalizeHash(await plan.submit());
-    await update("SUBMITTED", { txHash: transactionHash });
+    emitProgress(plan.progress, { phase: "SUBMITTED", hash: transactionHash });
+    try {
+      await update("SUBMITTED", { txHash: transactionHash });
+    } catch (error) {
+      current = { ...current, status: "RECONCILE", tx_hash: transactionHash };
+      options.journal.rememberRecovery(current);
+      emitProgress(plan.progress, {
+        phase: "RECONCILIATION_REQUIRED",
+        hash: transactionHash,
+        message: error instanceof Error ? error.message : "The transaction hash could not be persisted.",
+        persistenceDegraded: true,
+      });
+      return { status: "RECONCILE", journal: current };
+    }
   } catch (error) {
     if (isUserRejected(error)) {
-      await options.journal.removeUnsigned(key);
-      return { status: "CANCELLED", journal: null };
+      try {
+        await options.journal.removeUnsigned(key);
+        emitProgress(plan.progress, { phase: "REJECTED", message: "The wallet request was rejected. No transaction was submitted." });
+        return { status: "CANCELLED", journal: null };
+      } catch (cleanupError) {
+        const retained = await retainReconciliation(cleanupError instanceof Error ? cleanupError.message : "The rejected request could not be removed from the journal.");
+        return { status: "RECONCILE", journal: retained };
+      }
     }
-    await update("RECONCILE");
-    return { status: "RECONCILE", journal: current };
+    const retained = await retainReconciliation(error instanceof Error ? error.message : "The wallet submission could not be verified.");
+    return { status: "RECONCILE", journal: retained };
   }
 
   let receipt: ContractReceipt | null = null;
   let nextDelay = receiptDelays[0] ?? 0;
+  emitProgress(plan.progress, { phase: "WAITING_FOR_FINALITY", hash: transactionHash });
   for (let index = 0; index < receiptDelays.length; index += 1) {
     try {
       await waitUntilVisible(options.signal);
       await wait(sleep, nextDelay, options.signal);
       await waitUntilVisible(options.signal);
-    } catch {
-      await update("RECONCILE");
-      return { status: "RECONCILE", journal: current };
+    } catch (error) {
+      const retained = await retainReconciliation(error instanceof Error ? error.message : "Finality polling was interrupted.");
+      return { status: "RECONCILE", journal: retained };
     }
     try {
       const candidate = await plan.pollFinalized(transactionHash, index + 1);
@@ -224,99 +301,145 @@ export async function executeWrite(plan: WritePlan, options: CoordinatorOptions)
   }
 
   if (!receipt) {
-    await update("RECONCILE");
-    return { status: "RECONCILE", journal: current };
+    const retained = await retainReconciliation("Finality was not observed within the bounded polling window.");
+    return { status: "RECONCILE", journal: retained };
   }
 
+  emitProgress(plan.progress, { phase: "VERIFYING_EXECUTION", hash: transactionHash });
   if (isSuccessfulReceipt(receipt)) {
+    emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: transactionHash });
     if (await safeCheck(plan.verifyPost)) {
-      await update("VERIFIED");
-      return { status: "VERIFIED", journal: current, receipt };
+      try {
+        await update("VERIFIED");
+        emitProgress(plan.progress, { phase: "SUCCESS", hash: transactionHash });
+        return { status: "VERIFIED", journal: current, receipt };
+      } catch (error) {
+        const retained = await retainReconciliation(error instanceof Error ? error.message : "The verified result could not be persisted.");
+        return { status: "RECONCILE", journal: retained };
+      }
     }
-    await update("RECONCILE");
-    return { status: "RECONCILE", journal: current };
+    const retained = await retainReconciliation("Authoritative readback did not prove the expected transition.");
+    return { status: "RECONCILE", journal: retained };
   }
 
   if (receipt.txExecutionResultName === "FINISHED_WITH_ERROR") {
+    emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: transactionHash });
     const evidence = await safeResolution(plan.verifyFinalizedError);
+    if (evidence && isTerminalResolution(evidence)) {
+      try {
+        await update("FINALIZED_ERROR", { resolutionJson: evidence.detailJson });
+        emitProgress(plan.progress, { phase: "FAILED", hash: transactionHash, message: "The finalized transaction did not complete successfully." });
+        return { status: "FINALIZED_ERROR", journal: current, receipt };
+      } catch (error) {
+        const retained = await retainReconciliation(error instanceof Error ? error.message : "The finalized failure could not be persisted.", evidence.detailJson);
+        return { status: "RECONCILE", journal: retained };
+      }
+    }
     if (evidence) {
-      await update("FINALIZED_ERROR", { resolutionJson: evidence.detailJson });
-      return { status: "FINALIZED_ERROR", journal: current, receipt };
+      const retained = await retainReconciliation("The finalized result is still ambiguous; continue verification of the existing transaction.", evidence.detailJson);
+      return { status: "RECONCILE", journal: retained };
     }
     if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre)) {
-      await update("FINALIZED_ERROR", { resolutionJson: '{"classification":"UNCHANGED"}' });
-      return { status: "FINALIZED_ERROR", journal: current, receipt };
+      try {
+        await update("FINALIZED_ERROR", { resolutionJson: '{"classification":"UNCHANGED"}' });
+        emitProgress(plan.progress, { phase: "FAILED", hash: transactionHash, message: "The finalized transaction did not complete successfully and the authoritative pre-state was unchanged." });
+        return { status: "FINALIZED_ERROR", journal: current, receipt };
+      } catch (error) {
+        const retained = await retainReconciliation(error instanceof Error ? error.message : "The finalized failure could not be persisted.");
+        return { status: "RECONCILE", journal: retained };
+      }
     }
   }
-  await update("RECONCILE");
-  return { status: "RECONCILE", journal: current };
+  const retained = await retainReconciliation("The finalized transaction still requires authoritative reconciliation.");
+  return { status: "RECONCILE", journal: retained };
 }
 
 export async function reconcileWrite(plan: ReconcilePlan, options: CoordinatorOptions): Promise<WriteOutcome> {
-  if (plan.journal.tx_hash === "") {
-    const evidence = await safeResolution(plan.lookupNoHash);
-    if (!evidence) return { status: "RECONCILE", journal: plan.journal };
+  let current = plan.journal;
+  const retainReconciliation = async (message?: string, resolutionJson?: string): Promise<JournalRecord> => {
+    const fallback: JournalRecord = {
+      ...current,
+      status: "RECONCILE",
+      ...(resolutionJson !== undefined ? { resolution_json: resolutionJson } : {}),
+    };
     try {
-      const journal = await updateStatus(options.journal, plan.journal, "RECONCILE", evidence.detailJson);
-      return { status: "RECONCILE", journal };
+      current = await updateStatus(options.journal, current, "RECONCILE", resolutionJson);
     } catch {
-      return { status: "RECONCILE", journal: plan.journal };
+      current = fallback;
+      options.journal.rememberRecovery(current);
     }
+    emitProgress(plan.progress, {
+      phase: "RECONCILIATION_REQUIRED",
+      ...(current.tx_hash !== "" ? { hash: current.tx_hash } : {}),
+      ...(message ? { message } : {}),
+      ...(current.tx_hash !== "" ? { persistenceDegraded: !options.journal.signingAvailable } : {}),
+    });
+    return current;
+  };
+
+  if (plan.journal.tx_hash === "") {
+    emitProgress(plan.progress, { phase: "RECONCILIATION_REQUIRED", message: "No transaction hash is available; no replacement will be sent." });
+    const evidence = await safeResolution(plan.lookupNoHash);
+    if (!evidence) return { status: "RECONCILE", journal: current };
+    const journal = await retainReconciliation("The hashless operation remains preserved for reconciliation.", evidence.detailJson);
+    return { status: "RECONCILE", journal };
   }
   let receipt: ContractReceipt | null = null;
+  emitProgress(plan.progress, { phase: "WAITING_FOR_FINALITY", hash: current.tx_hash });
   try {
     await waitUntilVisible(options.signal);
-    receipt = await plan.pollFinalized(plan.journal.tx_hash, 1);
-  } catch {
-    try {
-      const journal = await updateStatus(options.journal, plan.journal, "RECONCILE");
-      return { status: "RECONCILE", journal };
-    } catch {
-      return { status: "RECONCILE", journal: plan.journal };
-    }
+    receipt = await plan.pollFinalized(current.tx_hash, 1);
+  } catch (error) {
+    const journal = await retainReconciliation(error instanceof Error ? error.message : "Finality polling was interrupted.");
+    return { status: "RECONCILE", journal };
   }
   if (!receipt || receipt.statusName !== "FINALIZED") {
-    try {
-      const journal = await updateStatus(options.journal, plan.journal, "RECONCILE");
-      return { status: "RECONCILE", journal };
-    } catch {
-      return { status: "RECONCILE", journal: plan.journal };
-    }
+    const journal = await retainReconciliation("The retained transaction is not finalized yet; no replacement will be sent.");
+    return { status: "RECONCILE", journal };
   }
 
+  emitProgress(plan.progress, { phase: "VERIFYING_EXECUTION", hash: current.tx_hash });
   if (isSuccessfulReceipt(receipt)) {
+    emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: current.tx_hash });
     if (await safeCheck(plan.verifyPost)) {
       try {
-        const journal = await updateStatus(options.journal, plan.journal, "VERIFIED");
-        return { status: "VERIFIED", journal, receipt };
+        current = await updateStatus(options.journal, current, "VERIFIED");
+        emitProgress(plan.progress, { phase: "SUCCESS", hash: current.tx_hash });
+        return { status: "VERIFIED", journal: current, receipt };
       } catch {
-        return { status: "RECONCILE", journal: plan.journal };
+        const journal = await retainReconciliation("The verified result could not be persisted.");
+        return { status: "RECONCILE", journal };
       }
     }
   } else if (receipt.txExecutionResultName === "FINISHED_WITH_ERROR") {
+    emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: current.tx_hash });
     const evidence = await safeResolution(plan.verifyFinalizedError);
-    if (evidence) {
+    if (evidence && isTerminalResolution(evidence)) {
       try {
-        const journal = await updateStatus(options.journal, plan.journal, "FINALIZED_ERROR", evidence.detailJson);
-        return { status: "FINALIZED_ERROR", journal, receipt };
+        current = await updateStatus(options.journal, current, "FINALIZED_ERROR", evidence.detailJson);
+        emitProgress(plan.progress, { phase: "FAILED", hash: current.tx_hash, message: "The finalized transaction did not complete successfully." });
+        return { status: "FINALIZED_ERROR", journal: current, receipt };
       } catch {
-        return { status: "RECONCILE", journal: plan.journal };
+        const journal = await retainReconciliation("The finalized failure could not be persisted.", evidence.detailJson);
+        return { status: "RECONCILE", journal };
       }
+    }
+    if (evidence) {
+      const journal = await retainReconciliation("The finalized result is still ambiguous; continue verification of the existing transaction.", evidence.detailJson);
+      return { status: "RECONCILE", journal };
     }
     if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre)) {
       try {
-        const journal = await updateStatus(options.journal, plan.journal, "FINALIZED_ERROR", '{"classification":"UNCHANGED"}');
-        return { status: "FINALIZED_ERROR", journal, receipt };
+        current = await updateStatus(options.journal, current, "FINALIZED_ERROR", '{"classification":"UNCHANGED"}');
+        emitProgress(plan.progress, { phase: "FAILED", hash: current.tx_hash, message: "The finalized transaction did not complete successfully and the authoritative pre-state was unchanged." });
+        return { status: "FINALIZED_ERROR", journal: current, receipt };
       } catch {
-        return { status: "RECONCILE", journal: plan.journal };
+        const journal = await retainReconciliation("The finalized failure could not be persisted.");
+        return { status: "RECONCILE", journal };
       }
     }
   }
 
-  try {
-    const journal = await updateStatus(options.journal, plan.journal, "RECONCILE");
-    return { status: "RECONCILE", journal };
-  } catch {
-    return { status: "RECONCILE", journal: plan.journal };
-  }
+  const journal = await retainReconciliation("The retained transaction still requires authoritative reconciliation.");
+  return { status: "RECONCILE", journal };
 }
