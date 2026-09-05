@@ -89,10 +89,12 @@ Studio receipt dialogs.
 | S04 evaluate | `evaluate_match` `0x38f5b5ca26aad86fc16a4e5251ba2ae042359af875c0aaf47289104081d94e6c` | `FINALIZED/SUCCESS`; case 1 readback `revision=4`, `outcome=MATCH`, `phase=DONE` |
 | S05 NO_MATCH | create `0xac265c38428a5e7e5a83ba6c556a6e8731e4f22a004946003d117547989abe9a`; guess `0x2d93bb2b6250f4f99c862d9cc24df0e04187efd8811a654640b3c5b0e9327e63`; reveal `0x5ae28ac7d460e457a95353305278120f74e5f0ecba13a99604b69d42402830a7`; evaluate `0xecfc09f6e585bd84b30908d5b59fb0756693a2d81f16c19440c717dbe04dfa1d` | All `FINALIZED/SUCCESS`; consensus output `NO_MATCH`; case 2 readback `revision=4`, `outcome=NO_MATCH`, `phase=DONE` |
 | S06 controls | wrong actor `0x15ff28841ae145b50ecabd314cc58276bd076297fb33a5751f857c672eb188a2`; stale revision `0x32ed42d0bec692d7dfb9806b80d42b241de791479c1f359a174aa4c4b003e40a`; bad reveal `0xc12dfd450a3cb229c8e763947910e65646a6bbc19477044882a541e76ad24868` | All `FINALIZED/ERROR`; `[rollback] UNAUTHORIZED`, `[rollback] BAD_REVISION`, and `[rollback] BAD_REVEAL`; case 3 remained `revision=2`, `phase=REVEAL_WAIT`, answer/salt empty |
+| S07 ambiguity | create `0xa6e76d9fb82abc17d983b9d5873648009dcd306d7b3766db926975fd0ccf2ef6`; guess `0xff95a487ae84ac3a9b4788ec48fa7cb4e763da3eac60a2b51431abb8b1567914`; reveal `0x01773206258d174200a35fc710c30d1e04667c7ed7ed666c5888e268354564a7`; evaluate `0xec28171464f38002dc3bab281d6b2bc0a0a62d6a7768f998ca0152267cb9ca12` | All `FINALIZED/SUCCESS`; live ambiguity evaluated as `NO_MATCH`, not `UNKNOWN`, so no retry was sent; `get_version(4,4)` readback `revision=4`, `outcome=NO_MATCH`, `phase=DONE` |
+| S08 expiry | `expire_match` `0xa74f09fae8c3bb0ddf321fcd202220df09d3c586d3c1398ca1d21fe2c7dea087` after deadline `1788623047` | `FINALIZED/SUCCESS`; case 3 readback `revision=3`, `phase=DONE`, `outcome=VOID`, preserved guess and empty result; no model call |
 
 The accidental idempotent duplicate create transaction
 `0x656faf600d7f39c751a3ff7ada40d3ae32b4ff2834b536d010f94adc4c447e88`
 replayed the already-used S01 nonce and returned existing case `1`; it did
-not create a new case or alter the final case state. S07 UNKNOWN/retry, S08
-expiry, and the physical hosted-UI request count remain explicitly unclaimed
-until separately measured.
+not create a new case or alter the final case state. S07 and S08 logical live
+journeys are now complete. The physical hosted-UI request count remains
+explicitly unclaimed until separately instrumented.
