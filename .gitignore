@@ -7,6 +7,21 @@ frontend/dist/
 frontend/.vite/
 frontend/playwright-report/
 frontend/test-results/
+
+# Local build/review working material; keep out of the public repository.
+/STAGE-1.md
+/STAGE-2.md
+/RESEARCH-HANDOFF.md
+/PRE_DEPLOY-READINESS.md
+/PRE_DEPLOY-ANONYMOUS-PROMPT.md
+/CLAUDE-FRONTEND-REDESIGN-PROMPT.md
+/DESIGN.md
+/docs/DEPLOYMENT-MANIFEST.md
+/docs/RECOVERY-RUNBOOK.md
+/docs/RPC-BUDGET.md
+/docs/STAGE-1-2-IMPLEMENTATION-ADAPTATION.md
+/docs/STUDIO-INCIDENT-2026-09-05.md
+/docs/STUDIO-RPC-RECOVERY-PLAN.md
 .env
 .env.*
 !.env.example
