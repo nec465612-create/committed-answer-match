@@ -426,7 +426,10 @@ async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, has
     rowId: "terminal-receipt",
     key: hash,
     signal: signal ?? new AbortController().signal,
-    call: () => request({ method: "gen_getTransactionReceipt", params: [{ txId: hash }] }),
+    // Studionet's deployed legacy node accepts the transaction hash directly
+    // here; passing the newer documented request object is persisted as a dict
+    // by that runtime and fails before the receipt can be read.
+    call: () => request({ method: "gen_getTransactionReceipt", params: [hash] }),
   });
   return parseTransactionReceipt(receipt);
 }
