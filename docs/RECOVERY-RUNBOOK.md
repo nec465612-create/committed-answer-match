@@ -77,6 +77,10 @@ The journal is a local recovery record, not the chain authority.
 - `Refresh` reads all valid entries without requiring Web Locks.
 - Malformed `glj1:*` entries are retained as raw export rows instead of being
   silently dropped; signing stays disabled while any are present.
+- The effective reviewed journal record has exactly 15 keys, including the
+  bounded `pre_state_json` and `resolution_json` recovery fields. The earlier
+  13-key shape and any duplicate JSON key at any nesting depth are quarantined
+  as raw data; they are never silently normalized or re-signed.
 - A hash-bearing entry may reconcile only the same transaction hash.
 - A hashless entry may perform one nonce/history lookup to classify
   `PRESENT`, `ABSENT`, `COMPETING` or `UNKNOWN`; it is never replayed.

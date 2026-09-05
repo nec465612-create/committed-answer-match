@@ -7,8 +7,8 @@
 | Workflow | Build |
 | Category | `PROJECT` |
 | Checkpoint | `PRE_DEPLOY` |
-| Package identity | `CAM-PREDEPLOY-30B40A1-DELTA-4` |
-| Exact source revision | `30b40a19edbdaa74e1c051763514503ec02fb4ff` |
+| Package identity | `CAM-PREDEPLOY-4B6556AD-DELTA-5` |
+| Exact source revision | `4b6556ad9b469f2baf95509d07970c0de19a3d45` |
 | Status | `ANONYMOUS REVIEW CHANGES REQUIRED — CORRECTIVE DELTA READY FOR RETAINED REVIEWER` |
 | Anonymous reviewer delivery | `NOT YET SENT — exact corrective package prepared` |
 | Studionet contract | Not deployed; no address or deployment transaction exists |
@@ -47,27 +47,29 @@ The current implementation is a single `CommittedAnswerMatch` contract plus a Re
 contracts/main.py 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
 contract-schema.json B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
 tests/test_contract.py 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
-frontend/src/App.tsx CD47B22CD60EED7CBDAD3C227CAF1CFA287E3B44CE4DDCF3F8F99D67B40EFE8B
-frontend/src/styles.css 3F22069E044CFECE430CAA6CE9DF13B5EE53E160CF4A901494B0D88B57C7F7E6
+frontend/src/App.tsx 52D865B493FCF200776D72A40F936329954A19F7748438D18B88E5CD68F59DB0
+frontend/src/styles.css 77BEFAEC5F7E2AEC88136A7F53A122787300C4248CA7E9D92C90671C1691930E
 frontend/src/contract.ts 3CDF41EDEB81B7BF5AD8DCC1F20B3AC7C2001078A7BC0EAE75A439604CFD25FF
 frontend/src/contract.test.ts C0F3D2A7175A7444D1800126762F12B27661BBE244D5BCBC3557D0B806BDAAFB
-frontend/src/pending.ts 9A15DDA663B1AFAF0A747C888C8E3EA92D4856FC581DFFA2FC129A1C3EE2CA1A
-frontend/src/pending.test.ts 1F4C1BA21A34D906580532E84839B0DCDC47AE08FE43D2BC27BCC031694D91DF
+frontend/src/pending.ts 8BF9D873FD8AB311604B9D9064B5DB010F155AC3ACBDFB644B27C191BDC503DD
+frontend/src/pending.test.ts B781F4EAF0C318943588634A88F3E392FA7ED021DD96D26E2A776249AD67EC6A
 frontend/src/chain/writeCoordinator.ts 9637537343D69178BDFC2F96A3A81AD1306F9F64BDCBD6DC37D8D7C000535EDB
-frontend/src/chain/writeCoordinator.test.ts 553BEC608F95A44BF2E198397CB35C4049D690EDC9D35776CDE75B886A6CA24C
+frontend/src/chain/writeCoordinator.test.ts ADCCE276C672E95D525E4D44DFA2652EDD5081D35B2BADB6B509BEEC27A65399
 frontend/src/verification.ts 2A5AFFE777DA95CDF1B9CE673B6EF01A7260613312D1B01C34D0111E803E06A1
 frontend/src/verification.test.ts 53AAC0212A6697202CCAA03E2398F3C36D904CCD42433D4F54D483E0FC7AB03B
 frontend/src/wallet/providers.ts A519ADB2FF99637EC51012F849B34583F48C182E85DEECD66F5046C037667A91
 frontend/src/wallet/connection.ts 7615F7B529BE0553EF3146B1E27E6414ED9BCB2B2565DE81B4CF5AC6C14A7773
 frontend/src/components/TransactionProgress.tsx DE619CBCB405A1284B3C3023C8DDAABE1ADFC25949320779E5FA13FB1C09140F
 frontend/src/transactionProgress.test.ts 04B3E1AE759423C90A59A7B0E58EF35C1CD4DC8DC873BCEF097A434278C44B13
-frontend/tests/flow.spec.ts 63ABF6C9EC6F741778545C07195FEA6C800ED850BCC3A03AE252BD3A39D40BCF
-docs/RPC-BUDGET.md 72C171F4CCD7F6B110F0EBA856CDE7C45D9144D4CD0E57C39818919B6CE6186B
-docs/DEPLOYMENT-MANIFEST.md 3E79424E1C432102DC8EF163AC0A121E0EAB3919E6BB08F738062472ADED8070
-docs/RECOVERY-RUNBOOK.md 8C481601B268BE3688E46EF7828EBFB2297A100719F0E55C410899284C48064B
+frontend/src/journalStatus.test.ts D89CDBD3B88F7DA13F4BAB05D387A8F11C424326F62A2ADA22756DAB592D2643
+frontend/tests/flow.spec.ts 8A50C345F60324DCC2C264BF98FF9F3B8E6C2C21F6DF48C203558EBBE0D211A6
+docs/STAGE-1-2-IMPLEMENTATION-ADAPTATION.md 77FDDA9392FA8FC7A0B776DF9A1233C3B0140E375AF33757074BC11A33AC9261
+docs/RPC-BUDGET.md A205EC84027FEA4A50F8DDB0C01762CB7578F17A01052FC74B753E1E28ED86F4
+docs/DEPLOYMENT-MANIFEST.md 4EB1F43C01E249594EF8C1187A6352DAC3F74CEC53D4D6FD27EBBD1401D32F95
+docs/RECOVERY-RUNBOOK.md 3A96B5B24B0AAD2A48478092753AD245B7B37D620E6CD574CDA4BEA252E83E49
 ~~~
 
-The implementation source revision is 30b40a19edbdaa74e1c051763514503ec02fb4ff. It closes the retained reviewer delta with exact pre-state-bound transitions, strict deadline advancement, competing/finalized-error classification, hashless lookup, raw journal recovery, hidden-tab pause, paged complete journal rendering, byte/control-equivalent frontend validation, exact public transaction progress, journal health latching, monotonic reconciliation evidence, single-flight lifecycle control, and the separate Studio plus frontend RPC budgets. The user-frozen contract itself remains unchanged by any later deployment action.
+The implementation source revision is 4b6556ad9b469f2baf95509d07970c0de19a3d45. It closes the retained reviewer delta with exact pre-state-bound transitions, strict deadline advancement, competing/finalized-error classification, hashless lookup, raw journal recovery, hidden-tab pause, paged complete journal rendering, byte/control-equivalent frontend validation, exact public transaction progress, journal health latching, monotonic reconciliation evidence, single-flight lifecycle control, duplicate-key quarantine, truthful finalized-error labels, reload-visible hashes, the explicit 15-key journal adaptation, and the separate Studio plus frontend RPC budgets. The user-frozen contract itself remains unchanged by any later deployment action.
 
 ## Runtime, documentation, and technical decisions
 
@@ -92,6 +94,9 @@ The contract uses the current installed header:
 # v0.1.0
 # { "Depends": "py-genlayer:1jb45aa8ynh2a9c9xn3b7qqh8sm5q93hwfp7jqmwsfhh8jpz09h6" }
 ```
+
+The effective browser journal schema is the explicit adaptation recorded in
+[`docs/STAGE-1-2-IMPLEMENTATION-ADAPTATION.md`](/E:/GenLayer-Projects/committed-answer-match/docs/STAGE-1-2-IMPLEMENTATION-ADAPTATION.md): exactly 15 bounded keys, with `pre_state_json` and `resolution_json` bound to the same reservation. The old 13-key shape and duplicate JSON keys at any depth are preserved as raw unknown data and cannot authorize signing.
 
 Current official documentation was checked on 2026-09-05 for transaction context, GenLayerJS, writing/querying transactions, transaction status, and the linter:
 
@@ -157,16 +162,16 @@ The following commands were executed against this exact source revision:
 | Contract lint | `genvm-lint check contracts\\main.py` | `Lint passed (3 checks)` |
 | Contract validation | `genvm-lint validate contracts\\main.py` | `Validation passed; CommittedAnswerMatch; 13 methods (7 view, 6 write)` |
 | Schema | `genvm-lint schema --json -o contract-schema.json contracts\\main.py` | `Schema written` |
-| Frontend unit | `npm test -- --run` from `frontend` | `7 files passed; 50 tests passed` |
+| Frontend unit | `npm test -- --run` from `frontend` | `8 files passed; 53 tests passed` |
 | Frontend type check | `npx tsc --noEmit` from `frontend` | Pass |
 | Frontend build | `npm run build` from `frontend` | `Vite build passed; 5438 modules; non-blocking >500 kB chunk warning` |
-| Browser E2E | `npm run test:e2e` from `frontend` | `5 passed` |
+| Browser E2E | `npm run test:e2e` from `frontend` | `6 passed` |
 | Closure serialization | `cloudpickle.dumps` of captured leader and validator with `VMContext.check_pickling=True` | Passed in the installed Direct Mode runtime; no pickling error |
 | Static trust scans | bounded `rg` scans for forbidden provider singleton and journal-key derivation | No forbidden matches |
 
 The contract tests cover idempotent context-bound creation, authorization, wrong phase, stale revision, atomic bad reveal, exact match, consensus NO_MATCH, deliberate validator disagreement, malformed consensus, UNKNOWN/cooldown/exhaustion, explicit void expiry, inclusive deadline behavior, wrong chain context, bounded lists, and production-shaped closure serialization.
 
-The frontend transaction indicator is driven by actual coordinator events and exposes the required `IDLE`, `WAITING_FOR_WALLET`, `SUBMITTED`, `WAITING_FOR_FINALITY`, `VERIFYING_EXECUTION`, `VERIFYING_READBACK`, `SUCCESS`, `REJECTED`, `FAILED` and `RECONCILIATION_REQUIRED` phases. It retains a returned hash with copy and verified Studionet Explorer actions, and a journal lock/storage failure latches signing off while read/export/reconcile remain available. One global lifecycle gate prevents concurrent write/reconciliation pollers; the journal pages visible records at four per page while export retains all valid and malformed entries.
+The frontend transaction indicator is driven by actual coordinator events and exposes the required `IDLE`, `WAITING_FOR_WALLET`, `SUBMITTED`, `WAITING_FOR_FINALITY`, `VERIFYING_EXECUTION`, `VERIFYING_READBACK`, `SUCCESS`, `REJECTED`, `FAILED` and `RECONCILIATION_REQUIRED` phases. It retains a returned hash with copy and verified Studionet Explorer actions, and a journal lock/storage failure latches signing off while read/export/reconcile remain available. One global lifecycle gate prevents concurrent write/reconciliation pollers; the journal pages visible records at four per page while export retains all valid and malformed entries. Finalized-error journal labels distinguish expected state present, unchanged state and competing operation, and a valid stored hash remains visible with safe reconciliation after reload. Pre-sign local failures remain local notices with no false `FAILED` transaction phase.
 
 ## Separate RPC budget gate
 

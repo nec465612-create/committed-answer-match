@@ -7,7 +7,7 @@ PROJECT: Committed Answer Match
 PROJECT PATH: E:\GenLayer-Projects\committed-answer-match
 CATEGORY: PROJECT
 CHECKPOINT: PRE_DEPLOY
-REVISION/PACKAGE: source `30b40a19edbdaa74e1c051763514503ec02fb4ff`; package `CAM-PREDEPLOY-30B40A1-DELTA-4`
+REVISION/PACKAGE: source `4b6556ad9b469f2baf95509d07970c0de19a3d45`; package `CAM-PREDEPLOY-4B6556AD-DELTA-5`
 DOCUMENT MODE / BASELINE: full exact-source review from the approved Stage 1/2 baseline
 STATUS: corrective delta prepared for the supplied retained route; not yet sent
 
@@ -19,7 +19,7 @@ Approve only if every current PRE_DEPLOY requirement passes for this exact revis
 
 ## Complete review package
 
-The implementation source revision is `30b40a19edbdaa74e1c051763514503ec02fb4ff`. This is a corrective delta to the already-delivered first-contact review on the retained route, not a new reviewer task. It closes exact pre-state-bound transitions, strict deadline advancement, finalized-error competing-state classification, hashless nonce/history lookup, raw journal recovery, hidden-tab polling pause, paged complete journal rendering, byte/control-equivalent text validation, unknown finalized-error retention, journal health latching, monotonic reconciliation evidence, single-flight lifecycle control, public transaction progress, and both independent RPC budgets. No signature, deployment transaction, contract write, Studio E2E, GitHub push, Vercel release, Explorer readback, or public release URL exists.
+The implementation source revision is `4b6556ad9b469f2baf95509d07970c0de19a3d45`. This is a corrective delta to the already-delivered first-contact review on the retained route, not a new reviewer task. It closes exact pre-state-bound transitions, strict deadline advancement, finalized-error competing-state classification, hashless nonce/history lookup, raw journal recovery, hidden-tab polling pause, paged complete journal rendering, byte/control-equivalent text validation, unknown finalized-error retention, journal health latching, monotonic reconciliation evidence, single-flight lifecycle control, public transaction progress, truthful finalized-error labels, pre-sign phase safety, reload-visible hashes, duplicate-key quarantine, the explicit 15-key journal schema adaptation, and both independent RPC budgets. No signature, deployment transaction, contract write, Studio E2E, GitHub push, Vercel release, Explorer readback, or public release URL exists.
 
 Canonical approved upstream package identifiers (not local file hashes):
 
@@ -43,24 +43,26 @@ Exact implementation/evidence hashes:
 contracts/main.py 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
 contract-schema.json B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
 tests/test_contract.py 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
-frontend/src/App.tsx CD47B22CD60EED7CBDAD3C227CAF1CFA287E3B44CE4DDCF3F8F99D67B40EFE8B
-frontend/src/styles.css 3F22069E044CFECE430CAA6CE9DF13B5EE53E160CF4A901494B0D88B57C7F7E6
+frontend/src/App.tsx 52D865B493FCF200776D72A40F936329954A19F7748438D18B88E5CD68F59DB0
+frontend/src/styles.css 77BEFAEC5F7E2AEC88136A7F53A122787300C4248CA7E9D92C90671C1691930E
 frontend/src/contract.ts 3CDF41EDEB81B7BF5AD8DCC1F20B3AC7C2001078A7BC0EAE75A439604CFD25FF
 frontend/src/contract.test.ts C0F3D2A7175A7444D1800126762F12B27661BBE244D5BCBC3557D0B806BDAAFB
-frontend/src/pending.ts 9A15DDA663B1AFAF0A747C888C8E3EA92D4856FC581DFFA2FC129A1C3EE2CA1A
-frontend/src/pending.test.ts 1F4C1BA21A34D906580532E84839B0DCDC47AE08FE43D2BC27BCC031694D91DF
+frontend/src/pending.ts 8BF9D873FD8AB311604B9D9064B5DB010F155AC3ACBDFB644B27C191BDC503DD
+frontend/src/pending.test.ts B781F4EAF0C318943588634A88F3E392FA7ED021DD96D26E2A776249AD67EC6A
 frontend/src/chain/writeCoordinator.ts 9637537343D69178BDFC2F96A3A81AD1306F9F64BDCBD6DC37D8D7C000535EDB
-frontend/src/chain/writeCoordinator.test.ts 553BEC608F95A44BF2E198397CB35C4049D690EDC9D35776CDE75B886A6CA24C
+frontend/src/chain/writeCoordinator.test.ts ADCCE276C672E95D525E4D44DFA2652EDD5081D35B2BADB6B509BEEC27A65399
 frontend/src/verification.ts 2A5AFFE777DA95CDF1B9CE673B6EF01A7260613312D1B01C34D0111E803E06A1
 frontend/src/verification.test.ts 53AAC0212A6697202CCAA03E2398F3C36D904CCD42433D4F54D483E0FC7AB03B
 frontend/src/wallet/providers.ts A519ADB2FF99637EC51012F849B34583F48C182E85DEECD66F5046C037667A91
 frontend/src/wallet/connection.ts 7615F7B529BE0553EF3146B1E27E6414ED9BCB2B2565DE81B4CF5AC6C14A7773
 frontend/src/components/TransactionProgress.tsx DE619CBCB405A1284B3C3023C8DDAABE1ADFC25949320779E5FA13FB1C09140F
 frontend/src/transactionProgress.test.ts 04B3E1AE759423C90A59A7B0E58EF35C1CD4DC8DC873BCEF097A434278C44B13
-frontend/tests/flow.spec.ts 63ABF6C9EC6F741778545C07195FEA6C800ED850BCC3A03AE252BD3A39D40BCF
-docs/RPC-BUDGET.md 72C171F4CCD7F6B110F0EBA856CDE7C45D9144D4CD0E57C39818919B6CE6186B
-docs/DEPLOYMENT-MANIFEST.md 3E79424E1C432102DC8EF163AC0A121E0EAB3919E6BB08F738062472ADED8070
-docs/RECOVERY-RUNBOOK.md 8C481601B268BE3688E46EF7828EBFB2297A100719F0E55C410899284C48064B
+frontend/src/journalStatus.test.ts D89CDBD3B88F7DA13F4BAB05D387A8F11C424326F62A2ADA22756DAB592D2643
+frontend/tests/flow.spec.ts 8A50C345F60324DCC2C264BF98FF9F3B8E6C2C21F6DF48C203558EBBE0D211A6
+docs/STAGE-1-2-IMPLEMENTATION-ADAPTATION.md 77FDDA9392FA8FC7A0B776DF9A1233C3B0140E375AF33757074BC11A33AC9261
+docs/RPC-BUDGET.md A205EC84027FEA4A50F8DDB0C01762CB7578F17A01052FC74B753E1E28ED86F4
+docs/DEPLOYMENT-MANIFEST.md 4EB1F43C01E249594EF8C1187A6352DAC3F74CEC53D4D6FD27EBBD1401D32F95
+docs/RECOVERY-RUNBOOK.md 3A96B5B24B0AAD2A48478092753AD245B7B37D620E6CD574CDA4BEA252E83E49
 ~~~
 
 Relevant implementation diff summary:
@@ -68,9 +70,10 @@ Relevant implementation diff summary:
 - `contracts/main.py` implements the approved C2 lifecycle, canonical context-bound SHA-256 commitment, deterministic exact-match short circuit, one bounded semantic assessment with independent validator rederivation, atomic phase/revision/history updates, and explicit expiry.
 - `frontend/src/contract.ts` uses one shared installed `genlayer-js` `studionet` read client, in-flight deduplication, the official lightweight status endpoint for the first two probes, terminal/diagnostic full receipt normalization, exact record parsing, and explicit chain-time reads.
 - `frontend/src/chain/writeCoordinator.ts` writes the journal before signing, submits once, polls at most three times, emits the exact public lifecycle phases, requires `FINALIZED` plus `FINISHED_WITH_RETURN`, performs one deliberate authoritative readback, keeps only exact `UNCHANGED`/`PRESENT`/`COMPETING` finalized-error evidence terminal, bounds Retry-After/backoff/cancellation, preserves same-hash reconciliation on uncertainty, and rejects a concurrent write/reconciliation lifecycle before a second poller starts.
-- `frontend/src/pending.ts` keeps mutations under the required `navigator.locks` mutex while making journal listing/export and same-hash reconciliation available when signing is unavailable; it latches health after lock/storage failure and enforces that latch at `createSigning`, retains a volatile returned-hash recovery record when possible, permits monotonic UNKNOWN/ABSENT-to-terminal evidence, and retains random 16-byte reservation keys, the 32-record cap, and immutable operation context.
+- `frontend/src/pending.ts` keeps mutations under the required `navigator.locks` mutex while making journal listing/export and same-hash reconciliation available when signing is unavailable; it latches health after lock/storage failure and enforces that latch at `createSigning`, retains a volatile returned-hash recovery record when possible, permits monotonic UNKNOWN/ABSENT-to-terminal evidence, rejects duplicate JSON keys before schema validation, and enforces the exact adapted 15-key record with random 16-byte reservation keys, the 32-record cap, and immutable operation context.
 - `frontend/src/wallet/` implements bounded EIP-6963 plus recognized legacy discovery for only MetaMask, OKX Wallet, and Rabby, with explicit selection and reload-on-session-change behavior.
-- `frontend/src/App.tsx` enforces exact method-specific postconditions, offers same-hash Resume/Reconcile without resubmission, binds backup acknowledgement to the current commitment context, normalizes CRLF answers before reveal, gates expiry on explicit refreshed chain time, exposes the persistent transaction-progress component with hash/copy/Explorer/recovery actions, gates every write/reconcile control while a lifecycle is active, paginates the journal at four entries per page, and keeps role-aware UI truthful. The final visual redesign is a separate bounded Claude handoff and is not a reason to alter this contract or transaction package.
+- `frontend/src/App.tsx` enforces exact method-specific postconditions, offers same-hash Resume/Reconcile without resubmission, binds backup acknowledgement to the current commitment context, normalizes CRLF answers before reveal, gates expiry on explicit refreshed chain time, exposes the persistent transaction-progress component with hash/copy/Explorer/recovery actions, gates every write/reconcile control while a lifecycle is active, paginates the journal at four entries per page, keeps pre-sign local failures out of transaction `FAILED`, renders retained hashes and safe reconciliation after reload, distinguishes finalized `PRESENT`/`UNCHANGED`/`COMPETING` evidence, and keeps role-aware UI truthful. The final visual redesign is a separate bounded Claude handoff and is not a reason to alter this contract or transaction package.
+- `docs/STAGE-1-2-IMPLEMENTATION-ADAPTATION.md` records the smallest primary-build adaptation from the approved 13-key journal text to the effective 15-key recovery-bound record, including bounds, serialization, duplicate-key handling, key/index semantics, affected evidence and residual risk. It changes no public contract or RPC envelope.
 - `docs/RPC-BUDGET.md` records independent `STUDIO.RPC_BUDGET` and `FRONTEND.RPC_BUDGET` matrices, evidence schemas, per-write envelopes, physical-provider-call measurement requirements, and the explicit pre-deployment live-evidence boundary.
 
 Observed Studio identity before any deployment: selected account `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902` in the Codex in-app Browser on 2026-09-05. No secret is included. The displayed balance was 998 GEN at observation time and is not treated as a durable balance claim.
@@ -150,19 +153,19 @@ Schema written to contract-schema.json
 npx tsc --noEmit
 pass
 
-npm test
-7 files passed; 50 tests passed
+npm test -- --run
+8 files passed; 53 tests passed
 
 npm run build
 Vite build passed; 5438 modules; non-blocking warning for a minified chunk over 500 kB
 
 npm run test:e2e
-5 passed
+6 passed
 ```
 
 The contract suite covers idempotent creation/context binding, authorization and wrong phase, stale revision and atomic bad reveal, exact MATCH, consensus NO_MATCH, deliberate validator disagreement, malformed consensus, UNKNOWN/cooldown/exhaustion, explicit VOID expiry, inclusive deadlines, wrong chain context, bounded lists, and production-shaped closure serialization. The serialization test enables `VMContext.check_pickling=True` and `cloudpickle.dumps` the captured leader and validator closures after semantic assessment.
 
-Frontend E2E covers no account request on page load or picker open, exact single-provider rendering, zero-provider empty state without fake wallet choices, focus restoration, inert background, journal-lock failure with every signing control disabled, four-entry journal pagination with all seeded valid/raw rows reachable, and malformed raw journal preservation/export. Unit tests additionally cover strict deadline transitions, competing/unknown execution results, hashless lookup, hidden-tab pause, rejected lock/storage failure latching after backend recovery, monotonic UNKNOWN-to-terminal evidence across reload, single-flight lifecycle rejection, byte/control limits and unpaired surrogates, the complete public progress phase set, retained hash/copy/Explorer/reconciliation behavior, and no success before readback. Static scans found no direct global `window.ethereum` access and no derivation of `glj1:` storage keys from `operationFingerprint`.
+Frontend E2E covers no account request on page load or picker open, exact single-provider rendering, zero-provider empty state without fake wallet choices, focus restoration, inert background, journal-lock failure with every signing control disabled, four-entry journal pagination with all seeded valid/raw rows reachable, malformed raw journal preservation/export, and reload-visible submitted hash/copy/Explorer/reconciliation evidence without a wallet call. Unit tests additionally cover strict deadline transitions, competing/unknown execution results, hashless lookup, hidden-tab pause, rejected lock/storage failure latching after backend recovery, monotonic UNKNOWN-to-terminal evidence across reload, single-flight lifecycle rejection, byte/control limits and unpaired surrogates, the complete public progress phase set, retained hash/copy/Explorer/reconciliation behavior, truthful finalized-error labels, duplicate keys at outer and nested levels, exact 15-key schema rejection, pre-sign failure phase safety, and no success before readback. Static scans found no direct global `window.ethereum` access and no derivation of `glj1:` storage keys from `operationFingerprint`.
 
 ## Delta closure matrix
 
@@ -199,6 +202,11 @@ Frontend E2E covers no account request on page load or picker open, exact single
 | D-020 concurrent write/reconcile lifecycles interleaved global progress | Coordinator and App use a single-flight lifecycle gate; every new write/reconcile control is disabled while another lifecycle is active | coordinator concurrent-lifecycle test; App wiring |
 | D-021 journal exceeded the approved four-entry page limit | Journal rows are paginated at four per page with accessible navigation; export retains the complete valid/raw set | `frontend/src/App.tsx`; `frontend/tests/flow.spec.ts` |
 | D-022 deployment manifest source hash was truncated | Manifest now contains the complete 64-hex contract SHA-256 and package hashes are regenerated | `docs/DEPLOYMENT-MANIFEST.md`; exact hash comparison |
+| D-023 finalized-error journal label collapsed `PRESENT` into no state change | Journal status copy now distinguishes `PRESENT` as expected state present, `UNCHANGED` as state unchanged, and `COMPETING` as competing operation retained; unknown resolution is not falsely labeled unchanged | `frontend/src/App.tsx`; `frontend/src/journalStatus.test.ts`; `npm test` |
+| D-024 pre-sign local failures were announced as transaction `FAILED` | App catches now keep pre-submit adapter/journal/preflight failures as local notices; only coordinator evidence emits transaction `FAILED`/`REJECTED`/`RECONCILIATION_REQUIRED` | `frontend/src/App.tsx`; lock/pre-submit coordinator regression; `npm test` |
+| D-025 durable journal silently expanded the approved 13-key schema | Added `docs/STAGE-1-2-IMPLEMENTATION-ADAPTATION.md`; effective v1 schema is explicitly exactly 15 bounded keys, with immutable `pre_state_json` and `resolution_json`, strict exact-key validation, serialization/index rules and affected acceptance evidence | adaptation record; `frontend/src/pending.ts`; exact-schema regression; rehashed package |
+| D-026 reload hid the retained submitted transaction hash/progress | Journal rows render the full stored hash with copy and verified Explorer actions plus the existing explicit reconcile control; no reload submission occurs | `frontend/src/App.tsx`; `frontend/tests/flow.spec.ts` reload-after-submit-hash test |
+| D-027 duplicate JSON keys were collapsed by `JSON.parse` | Outer journal JSON and all canonical nested JSON use a duplicate-key-rejecting parser; duplicate records remain raw unknown entries and block signing | `frontend/src/pending.ts`; top-level/nested duplicate-key regressions; `frontend/tests/flow.spec.ts` raw preservation |
 
 ## Required dual RPC budget review
 
@@ -269,7 +277,7 @@ Current missing items are stated facts for this package: no live contract addres
 ```text
 REVIEWER: anonymous co-review AI
 CHECKPOINT: PRE_DEPLOY
-REVISION/PACKAGE: source 30b40a19edbdaa74e1c051763514503ec02fb4ff; package CAM-PREDEPLOY-30B40A1-DELTA-4
+REVISION/PACKAGE: source 4b6556ad9b469f2baf95509d07970c0de19a3d45; package CAM-PREDEPLOY-4B6556AD-DELTA-5
 VERDICT: ANONYMOUS REVIEW APPROVED - PRE_DEPLOY
 FINDINGS: NONE, or for each finding provide ID, severity, violated requirement, exact file/line/URL/artifact, evidence, cause or contradiction, impact, concrete correction, and verification criterion.
 REBUTTALS: none, or each finding ID with accepted/revised/retained decision and exact evidence.

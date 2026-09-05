@@ -4,7 +4,7 @@ This file is the project-specific pre-action matrix required by the canonical `S
 
 ## Applicability
 
-- `RPC_BUDGET_REVISION: 30b40a19edbdaa74e1c051763514503ec02fb4ff`
+- `RPC_BUDGET_REVISION: 4b6556ad9b469f2baf95509d07970c0de19a3d45`
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
@@ -54,6 +54,12 @@ At this checkpoint every row is explicitly not run. There is no deployment, tran
 ## FRONTEND RPC BUDGET MATRIX
 
 The frontend has one shared `genlayer-js` read client for the configured Studionet chain/contract. Read deduplication is in-flight only; there is no stale persistent cache for transaction state, authorization, balances or verdicts. A write creates a durable journal record before wallet UI and never submits a second transaction for the same authorization/hash. The coordinator and App enforce one global lifecycle at a time, so write and same-hash reconciliation pollers cannot interleave. The public transaction indicator is driven by the exact lifecycle phases in `FRONTEND.TRANSACTION_PROGRESS`; a hash is retained through finality, execution and authoritative readback, including storage-degraded reconciliation.
+
+The journal schema/recovery adaptation is storage-only and does not change either
+RPC scope or any planned request envelope. The Studio matrix remains the
+primary-AI deployment/Studio-E2E budget, and the frontend matrix remains the
+browser/Vercel budget; both must still be measured independently on their exact
+later revisions.
 
 | Screen/workflow | Request source | RPC method | Trigger | Cache key / TTL | In-flight dedupe | Invalidation | Poll interval / attempts | Retry/backoff/cancel | Planned maximum | Transaction count | Terminal/readback condition |
 |---|---|---|---|---|---|---|---|---|---:|---:|---|
