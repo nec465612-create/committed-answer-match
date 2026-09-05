@@ -1,6 +1,6 @@
 # Committed Answer Match — Replacement Deployment Manifest
 
-`MANIFEST_STATUS: REPLACEMENT_DEPLOYED — POST_DEPLOY_E2E_PARTIAL`
+`MANIFEST_STATUS: REPLACEMENT_DEPLOYED — POST_DEPLOY_TEST_BLOCKED_PD-001`
 
 This secret-free manifest is the deployment/recovery binding for the exact
 reviewed source. It is not a deployment receipt and contains no private key,
@@ -87,6 +87,8 @@ REPLACEMENT_INITIAL_COUNT_READBACK: 0 at Finalized
 POST_DEPLOY_STUDIO_E2E: S01 MATCH, S05 NO_MATCH, S06 rejection controls, S07 terminal NO_MATCH, S08 VOID expiry
 POST_DEPLOY_STUDIO_E2E_REMAINING: logical S00-S08 journeys complete; physical Studio request count remains unresolved
 PHYSICAL_STUDIO_REQUEST_COUNT: unresolved; do not treat missing measurement as zero
+POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW CHANGES REQUIRED - POST_DEPLOY_TEST
+POST_DEPLOY_REVIEW_RESIDUAL: PD-001 only — physical Studio request measurement is unrecoverable from the hosted tab
 ```
 
 The two intermediate replacement candidates are rejected and must not be

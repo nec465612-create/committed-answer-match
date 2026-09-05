@@ -98,3 +98,15 @@ replayed the already-used S01 nonce and returned existing case `1`; it did
 not create a new case or alter the final case state. S07 and S08 logical live
 journeys are now complete. The physical hosted-UI request count remains
 explicitly unclaimed until separately instrumented.
+
+## Current checkpoint disposition
+
+The retained reviewer rechecked commit `4734fc290cd0838126884e558f63c8f50a8318b9`
+and returned exactly `ANONYMOUS REVIEW CHANGES REQUIRED - POST_DEPLOY_TEST`.
+PD-002 (expiry), PD-003 (UNKNOWN/retry disposition), and PD-004 (frontend
+stage wording) are closed. PD-001 is the sole residual blocker: the hosted IAB
+Studio binding exposes DOM/Playwright and console logs but no network,
+performance, or CDP request counter, and the earlier physical request history
+is unrecoverable. This remains blocked rather than being inferred or relabeled
+as zero; no duplicate transaction or redeployment is permitted to manufacture
+the evidence.

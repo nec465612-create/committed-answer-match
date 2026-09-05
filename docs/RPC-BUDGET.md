@@ -12,6 +12,8 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `STUDIO_MATRIX_STATUS: LIVE_EVIDENCE_PARTIAL — awaiting post-deploy review`
 - `FRONTEND_MATRIX_STATUS: READY_FOR_POST_DEPLOY_MEASUREMENT`
 - `STUDIO_EVIDENCE_STATUS: LIVE PARTIAL — replacement S00–S08 evidenced; physical UI request count remains unresolved`
+- `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW CHANGES REQUIRED - POST_DEPLOY_TEST`
+- `POST_DEPLOY_REVIEW_RESIDUAL: PD-001 only — physical Studio request measurement remains unrecoverable`
 - `FRONTEND_EVIDENCE_STATUS: PLAN_AND_MATRIX_READY — no exact-release measurement claimed; physical release measurement and wallet-signed E2E are later POST_GITHUB_VERCEL_FINAL gates`
 
 Official references checked for the current transaction interface and lightweight status method:
@@ -57,7 +59,9 @@ Studio UI actions and transaction counts below are measured. The hosted UI's int
 | Replacement S00–S08 | See live rows below | 22 writes observed, including one idempotent duplicate | See live rows below | Finality/receipts/readbacks captured per row | No duplicate after a returned hash; cooldowns honored | Final replacement source commit `77a182aa35d661e71facdb183bb6902289e188bd`; source SHA `5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC` | S00–S08 logical evidence PASS; physical count unresolved |
 
 Replacement live rows (2026-09-05; the hosted UI's physical request count
-was not instrumented, so `Actual requests` remains unresolved and is not zero):
+was not instrumented, the retained tab exposes no network/performance/CDP
+counter, and its console log buffer contains no request counter, so `Actual
+requests` remains unresolved and is not zero):
 
 | Operation/case | Actual requests | Actual transactions | Hashes | Receipt/readback | Result |
 |---|---:|---:|---|---|---|
@@ -122,3 +126,6 @@ and the journal remains the recovery source.
 - Missing or unexplained Studio measurements block `POST_DEPLOY_TEST`; missing
   exact-release frontend measurements block `POST_GITHUB_VERCEL_FINAL` and
   public release.
+- `PD-001` is the sole residual reviewer blocker for this current
+  `POST_DEPLOY_TEST` checkpoint. No duplicate write or redeployment may be used
+  to manufacture the missing physical count.
