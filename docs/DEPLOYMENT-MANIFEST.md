@@ -1,4 +1,4 @@
-# Committed Answer Match — Draft Deployment Manifest
+# Committed Answer Match — Replacement Deployment Manifest
 
 `MANIFEST_STATUS: FIRST_INSTANCE_REJECTED — REPLACEMENT_PRE_DEPLOY_PENDING`
 
@@ -6,15 +6,15 @@ This secret-free manifest is the deployment/recovery binding for the exact
 reviewed source. It is not a deployment receipt and contains no private key,
 seed phrase, wallet secret, RPC credential or signing material.
 
-## Exact source
+## Replacement exact source
 
 ```text
-SOURCE_IMPLEMENTATION_COMMIT: 4b6556ad9b469f2baf95509d07970c0de19a3d45
+SOURCE_IMPLEMENTATION_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
 CONTRACT_CLASS: CommittedAnswerMatch
 CONSTRUCTOR_ARGUMENTS: []
-CONTRACT_SOURCE_SHA256: 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
+CONTRACT_SOURCE_SHA256: 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
 SCHEMA_SHA256: B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
-CONTRACT_TEST_SOURCE_SHA256: 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
+CONTRACT_TEST_SOURCE_SHA256: DEFC83A938E0CABCD8EECFCA8B7D199AB49901B8C5F6B511965ECF7E02E0FB9C
 IMPLEMENTATION_ADAPTATION_SHA256: 77FDDA9392FA8FC7A0B776DF9A1233C3B0140E375AF33757074BC11A33AC9261
 ```
 
@@ -25,7 +25,7 @@ deployed and accepted:
 ```text
 FRONTEND_CONFIG_KEY: VITE_CONTRACT_ADDRESS
 FRONTEND_CONFIG_VALUE: unset before S00
-FRONTEND_SOURCE_COMMIT: 4b6556ad9b469f2baf95509d07970c0de19a3d45
+FRONTEND_SOURCE_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
 ```
 
 ## Network and identity
@@ -53,7 +53,7 @@ USER_CONFIRMATION: Xác nhận contract này là INTENTIONALLY FROZEN; nếu có
 POST_DEPLOY_DEFECT: deploy a new contract and update the frontend address; never upgrade this address
 ```
 
-## First deployment outcome
+## Rejected first deployment outcome
 
 Before S00, record the actual Studio source view/hash, account, network and
 constructor arguments. After S00, append the deployment transaction hash,

@@ -33,6 +33,15 @@ not at checksum casing. Current official documentation types the message fields 
 `Address`; existing verified runtime experience records that hosted Studio can
 serialize address values as 160-bit integers.
 
+The applied experience entry is `E:\Genlayer\experience\Task Build Experience.md`,
+2026-08-08, “Keep GenVM test doubles narrower than the real runtime” (lines
+196–204). Its prevention rule is to probe alternate calldata encodings and
+normalize every public address boundary; this incident applies that rule at the
+shared `_address()` boundary and adds a regression for a valid 160-bit integer
+plus the out-of-range rejection. The entry is experience guidance, not a
+substitute for current official Address documentation or replacement Studio
+proof.
+
 ## Replacement candidate
 
 ```text
