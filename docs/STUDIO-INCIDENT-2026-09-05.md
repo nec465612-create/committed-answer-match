@@ -110,3 +110,11 @@ performance, or CDP request counter, and the earlier physical request history
 is unrecoverable. This remains blocked rather than being inferred or relabeled
 as zero; no duplicate transaction or redeployment is permitted to manufacture
 the evidence.
+
+As a bounded recovery probe, a newly opened `/run-debug` Studio tab was loaded
+once after the retained tab had been removed from the Browser runtime. The
+tab's console log exposed three `gen_getContractSchema` errors, each reporting
+`Rate limit exceeded: 30 requests per minute`; it exposed neither successful
+request events nor a total request counter. The probe was then closed. This is
+runtime evidence for the Studio quota constraint, not a physical request count
+or a reason to treat the missing count as zero.

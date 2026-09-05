@@ -63,6 +63,12 @@ was not instrumented, the retained tab exposes no network/performance/CDP
 counter, and its console log buffer contains no request counter, so `Actual
 requests` remains unresolved and is not zero):
 
+A bounded tab-recovery probe on 2026-09-05 loaded `/run-debug` once and then
+closed the tab. Its console exposed three `gen_getContractSchema` errors with
+`Rate limit exceeded: 30 requests per minute`, but no successful-request trace
+or total counter. This confirms quota pressure while leaving the physical
+request total unresolved; it adds no contract transaction evidence.
+
 | Operation/case | Actual requests | Actual transactions | Hashes | Receipt/readback | Result |
 |---|---:|---:|---|---|---|
 | Replacement S00 final deploy | unresolved | 1 | `0x94005694eb8bc36780e258a80123f8965666e96b3801b8a4158566a4d2151644` | `FINALIZED/SUCCESS`; exact deployed-code SHA parity; `get_count=0` | PASS; physical count unresolved |
