@@ -6,8 +6,8 @@ reproducible local checks for the current release candidate.
 ## Release binding
 
 ```text
-PACKAGE_COMMIT: 1233c0f2e3c90a3cea8fd6b5afb8418ca228ceba
-PUBLIC_REPOSITORY_HEAD: 1233c0f2e3c90a3cea8fd6b5afb8418ca228ceba
+PACKAGE_COMMIT: cada0f30d291efaee52f9e09f798abb1819c37e4
+PUBLIC_REPOSITORY_HEAD: cada0f30d291efaee52f9e09f798abb1819c37e4
 CONTRACT_SOURCE_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
 CONTRACT_SOURCE_SHA256: 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
 CONTRACT_TEST_SHA256: DEFC83A938E0CABCD8EECFCA8B7D199AB49901B8C5F6B511965ECF7E02E0FB9C
@@ -22,8 +22,20 @@ INITIAL_COUNT: 0
 LIFECYCLE: INTENTIONALLY FROZEN
 POST_DEPLOY_DEFECT_POLICY: deploy a new contract and update the frontend address; never upgrade this address
 VERCEL_PROJECT: nec10/frontend
+VERCEL_DEPLOYMENT_ID: dpl_HtjYq6FBzArSaPvxcuF2cUupwbLr
 VERCEL_DEPLOYMENT_STATUS: READY
 HOSTED_FRONTEND: https://frontend-psi-kohl-42.vercel.app
+```
+
+## Public artifact allowlist amendment
+
+The exact public tree includes the Vite type declaration below. Its SHA-256 is
+recorded so the allowlist remains reproducible and does not omit a tracked
+frontend artifact:
+
+```text
+PUBLIC_ARTIFACT: frontend/src/vite-env.d.ts
+PUBLIC_ARTIFACT_SHA256: F6B2AAC790C0004EAEE21DB68BAB42675BE26E53D7BF06D99E63E84B55732BA4
 ```
 
 - [Contract in the Studionet Explorer](https://explorer-studio.genlayer.com/address/0xD22f951BD5B7AE6615c27066e99a80D9751be5cF)
