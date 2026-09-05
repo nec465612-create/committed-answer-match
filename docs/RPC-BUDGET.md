@@ -4,7 +4,7 @@ This file is the project-specific pre-action matrix required by the canonical `S
 
 ## Applicability
 
-- `RPC_BUDGET_REVISION: 755ea906c7e73402d015750b2ee0633c4942bb59`
+- `RPC_BUDGET_REVISION: 999c1c0d71dbbd0f0ed74d6430558bffd7010933`
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
@@ -53,7 +53,7 @@ Studio UI actions and transaction counts below are measured. The hosted UI's int
 | S01 create F1 | UI physical count not captured | 1 | `0x7a0e1193fe96190b6be2e1a3a9ba331ac0461aa4a8e037df99b1effefbb8b40e` | terminal leader/validator execution inspected | None after hash | Fresh fixture; finalized execution `BAD_ADDRESS` | FAIL, unchanged state expected |
 | S01 create F2 diagnostic | UI physical count not captured | 1 | `0x4d4d1f572abd570f5eca49a54998e5fd028e4007c533f91af0688fb9ef2f183b` | terminal leader/validator execution inspected | None after hash | New nonce and lowercase opponent isolated casing; same `BAD_ADDRESS` | FAIL, root cause located |
 | Read-only diagnostic | UI physical count not captured | 0 | NONE | No contract result obtained | Studio hit 30/min; stopped; later one reload also exhausted the UI budget | Probe abandoned because existing evidence plus verified runtime pattern located the defect | STOPPED ON QUOTA |
-| Replacement S00–S08 | NOT RUN | 0 | NONE | NOT RUN | No action before new PRE_DEPLOY approval | Exact source `5D770C...8C6BC`; new address required | PENDING REVIEW |
+| Replacement S00–S08 | NOT RUN | 0 | NONE | NOT RUN | No action before new PRE_DEPLOY approval | Source commit `77a182aa35d661e71facdb183bb6902289e188bd`; source SHA `5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC`; new address required | PENDING REVIEW |
 
 ## FRONTEND RPC BUDGET MATRIX
 
