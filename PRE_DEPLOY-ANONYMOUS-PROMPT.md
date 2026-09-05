@@ -9,6 +9,7 @@ CATEGORY: PROJECT
 CHECKPOINT: PRE_DEPLOY
 REVISION/PACKAGE: source `9f6452b6d2030605f72d9912b095c501b62451ac`; package `CAM-PREDEPLOY-9F6452B6-LOCAL-1`
 DOCUMENT MODE / BASELINE: full exact-source review from the approved Stage 1/2 baseline
+STATUS: ready for first-contact delivery once the retained reviewer route is supplied; not yet sent
 
 ## Objective and acceptance criteria
 
@@ -54,7 +55,7 @@ Relevant implementation diff summary:
 
 Observed Studio identity before any deployment: selected account `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902` in the Codex in-app Browser on 2026-09-05. No secret is included. The displayed balance was 998 GEN at observation time and is not treated as a durable balance claim.
 
-Proposed deployment classification: `INTENTIONALLY FROZEN`. Stage 2 advertises no upgrade mechanism. The source exposes no upgrade method or upgrade storage. A post-deployment defect would require a new contract deployment and frontend/address update. Explicit user confirmation of this immutability decision is not yet recorded; treat that fact as part of the current evidence, not as an approval.
+Deployment classification: `INTENTIONALLY FROZEN`. Stage 2 advertises no upgrade mechanism. The source exposes no upgrade method or upgrade storage. A post-deployment defect would require a new contract deployment and frontend/address update. The user has explicitly confirmed in this Task: `Xác nhận contract này là INTENTIONALLY FROZEN; nếu có lỗi sau deploy thì phải deploy contract mới.`
 
 ## Current runtime and official references
 
@@ -168,7 +169,7 @@ Apply the current canonical rules, not the primary-AI summary alone:
 - **AI hierarchy:** `PRE_DEPLOY` bundles the Studio E2E plan and occurs before every signature/write/deployment. `POST_DEPLOY_TEST`, `POST_GITHUB_VERCEL_FINAL`, and `EXPLORER_PRE_SUBMISSION` are separate later checkpoints.
 - **REVIEW.OPERATIONAL_PROTOCOL:** independently verify the exact package and do not delegate. Return one exact verdict: `ANONYMOUS REVIEW APPROVED - PRE_DEPLOY`, `ANONYMOUS REVIEW CHANGES REQUIRED - PRE_DEPLOY`, or `ANONYMOUS REVIEW REJECTED - PRE_DEPLOY`. Missing evidence is `CHANGES REQUIRED`, not `INCONCLUSIVE`.
 
-Current missing items are stated facts for this package: explicit user confirmation of `INTENTIONALLY FROZEN` is not recorded; no live contract address, deployment transaction, receipt, Explorer/RPC result, GitHub target, Vercel target, or public release URL exists; and no reviewer route has been supplied. Do not infer any of them.
+Current missing items are stated facts for this package: no live contract address, deployment transaction, receipt, Explorer/RPC result, GitHub target, Vercel target, or public release URL exists; and no reviewer route has been supplied. Do not infer any of them.
 
 ## Return exactly this schema
 

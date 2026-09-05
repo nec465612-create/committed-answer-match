@@ -9,7 +9,7 @@
 | Checkpoint | `PRE_DEPLOY` |
 | Package identity | `CAM-PREDEPLOY-9F6452B6-LOCAL-1` |
 | Exact source revision | `9f6452b6d2030605f72d9912b095c501b62451ac` |
-| Status | `NOT REQUESTED / HOLD` |
+| Status | `READY FOR PRE_DEPLOY REVIEW / WAITING RETAINED REVIEWER ROUTE` |
 | Anonymous reviewer delivery | `NOT SENT — no retained reviewer route supplied` |
 | Studionet contract | Not deployed; no address or deployment transaction exists |
 | Studio account | Selected and locked for deployment role: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`; no secret is recorded |
@@ -19,9 +19,9 @@ This is a readiness package, not an approval, deployment record, live-test resul
 
 ## Required deployment classification
 
-**Proposed classification: `INTENTIONALLY FROZEN`.** Stage 2 says that no upgrade mechanism is advertised for this single-contract product. The implementation therefore exposes no upgrade method and has no upgrade storage. A post-deployment defect may require a new contract deployment and a frontend/address update; the existing frozen contract cannot be repaired in place.
+**Classification: `INTENTIONALLY FROZEN`.** Stage 2 says that no upgrade mechanism is advertised for this single-contract product. The implementation therefore exposes no upgrade method and has no upgrade storage. A post-deployment defect may require a new contract deployment and a frontend/address update; the existing frozen contract cannot be repaired in place.
 
-The recoverability gate still requires an explicit user confirmation of this immutability decision before deployment authorization. The general instruction to continue work is not recorded here as that distinct decision. Until the explicit confirmation is recorded, this package remains on hold.
+User confirmation recorded in this Task: `Xác nhận contract này là INTENTIONALLY FROZEN; nếu có lỗi sau deploy thì phải deploy contract mới.`
 
 ## Exact source and approved baseline
 
@@ -173,10 +173,10 @@ The current exact-source package must satisfy these checkpoint rules before any 
 - **Submission Integrity Gate §§6, 8–10:** off-chain records remain provisional until finalized semantic success and authoritative readback; exact source, deployed source, address, manifest and evidence must match; target Studionet; disclose that local tests and prose do not substitute for live evidence.
 - **AI hierarchy:** `PRE_DEPLOY` is before any signature/deployment/write and bundles the Studio E2E plan. It is not deployment proof. Later `POST_DEPLOY_TEST`, `POST_GITHUB_VERCEL_FINAL`, and `EXPLORER_PRE_SUBMISSION` remain separate approvals.
 
-Current blockers are intentional and explicit:
+Remaining handoff blocker and later-stage blanks are intentional and explicit:
 
-1. The user must explicitly confirm `INTENTIONALLY FROZEN` and the consequence that a post-deployment defect requires a new contract, or choose a different governed classification.
-2. The user must supply the retained anonymous reviewer route for the one required first-contact handoff. The complete package is not marked sent merely because this file or the prompt file exists.
+1. The user must supply the retained anonymous reviewer route for the one required first-contact handoff. The complete package is not marked sent merely because this file or the prompt file exists.
+2. Contract address, deployment transaction, live receipts, Explorer/RPC readback, GitHub identity, Vercel team/project, and public release URL do not exist yet; these are later-stage blanks and are not being presented as current evidence.
 3. Contract address, deployment transaction, live receipts, Explorer/RPC readback, GitHub identity, Vercel team/project, and public release URL do not exist yet and are intentionally blank at this checkpoint.
 
 Until these are resolved, do not deploy, sign, write, push, configure a public contract address, or claim `PRE_DEPLOY` approval.
