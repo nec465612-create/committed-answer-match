@@ -84,6 +84,33 @@ describe("DurableJournal", () => {
     expect(await lockFree.list()).toEqual([record]);
   });
 
+  it("preserves malformed raw entries for export and blocks signing", async () => {
+    const storage = new MemoryStorage();
+    const journal = new DurableJournal(storage, new ImmediateLocks());
+    const record = await journal.createSigning(input(1));
+    const malformedKey = journalKey("c".repeat(32));
+    storage.setItem(malformedKey, "{not-json");
+
+    const snapshot = await journal.snapshot();
+    expect(snapshot.records).toEqual([record]);
+    expect(snapshot.unknown).toEqual([{ key: malformedKey, raw: "{not-json", error: expect.any(String) }]);
+    await expect(journal.createSigning(input(2))).rejects.toMatchObject({ kind: "data" });
+  });
+
+  it("reads legacy records while normalizing the new recovery fields", async () => {
+    const storage = new MemoryStorage();
+    const journal = new DurableJournal(storage, new ImmediateLocks());
+    const record = await journal.createSigning(input(1));
+    const legacy = { ...record } as Record<string, unknown>;
+    delete legacy.pre_state_json;
+    delete legacy.resolution_json;
+    storage.setItem(journalKey(record.reservation), JSON.stringify(legacy));
+
+    const snapshot = await journal.snapshot();
+    expect(snapshot.unknown).toEqual([]);
+    expect(snapshot.records[0]).toMatchObject({ pre_state_json: "", resolution_json: "{}" });
+  });
+
   it("blocks a second pending write for the same case even with another account or method", async () => {
     const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
     await journal.createSigning({

@@ -49,6 +49,50 @@ test("keeps the journal lock failure visible instead of attempting a write", asy
   await expect(page.getByText(/journal lock/i)).toBeVisible();
 });
 
+test("disables every signing control when the journal is not lockable", async ({ page }) => {
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "locks", { configurable: true, value: undefined });
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "New match", exact: true }).click();
+  await expect(page.getByRole("button", { name: /Create match/ })).toBeDisabled();
+});
+
+test("renders every valid journal record and preserves malformed raw export", async ({ page }) => {
+  await page.addInitScript(() => {
+    const contract = "0x1111111111111111111111111111111111111111";
+    const account = "0x2222222222222222222222222222222222222222";
+    for (let index = 1; index <= 5; index += 1) {
+      const nonce = index.toString(16).padStart(32, "0");
+      const reservation = index.toString(16).padStart(32, "0");
+      const record = {
+        v: 1,
+        reservation,
+        chain: "61999",
+        contract,
+        account,
+        method: "create_match",
+        intent: `create:${account}:${nonce}`,
+        args_json: JSON.stringify([nonce, contract, `clue ${index}`, "a".repeat(64)]),
+        pre_revision: "0",
+        pre_hash: "0".repeat(64),
+        pre_state_json: "",
+        tx_hash: "",
+        status: "RECONCILE",
+        created_ms: String(index),
+        resolution_json: "{}",
+      };
+      localStorage.setItem(`glj1:${reservation}`, JSON.stringify(record));
+    }
+    localStorage.setItem("glj1:malformed", "{not-json");
+  });
+  await page.goto("/");
+  await page.getByRole("button", { name: "Journal", exact: true }).click();
+  await expect(page.locator(".journal-row")).toHaveCount(6);
+  await expect(page.getByText(/Unreadable journal entries are preserved/i)).toBeVisible();
+  await expect(page.getByRole("button", { name: "Export" })).toBeEnabled();
+});
+
 test("shows an empty picker without fake wallet options and restores focus on Escape", async ({ page }) => {
   await page.goto("/");
   const connect = page.getByRole("button", { name: /connect wallet/i });

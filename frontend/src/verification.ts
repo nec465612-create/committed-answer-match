@@ -80,7 +80,7 @@ function sameExpiryState(before: CaseRecord, after: CaseRecord): boolean {
 function validDeadlineAdvance(before: CaseRecord, after: CaseRecord): boolean {
   if (!decimal(after.domain.deadline)) return false;
   try {
-    return BigInt(after.domain.deadline) >= BigInt(before.domain.deadline);
+    return BigInt(after.domain.deadline) > BigInt(before.domain.deadline);
   } catch {
     return false;
   }
@@ -213,6 +213,7 @@ export function matchesActionPostcondition(input: {
 }
 
 export function matchesJournalActionPostcondition(input: {
+  before: CaseRecord;
   record: CaseRecord;
   method: ActionMethod;
   caller: string;
@@ -220,60 +221,18 @@ export function matchesJournalActionPostcondition(input: {
   args: readonly unknown[];
   preRevision: string;
 }): boolean {
-  const { record, method, caller, argsHash, args, preRevision } = input;
-  if (!isExactCaseRecord(record) || !ACTION_METHODS.includes(method)) return false;
-  if (record.id !== args[0] || args[args.length - 1] !== preRevision || record.revision !== nextRevision(preRevision)) return false;
-  if (!exactOperation(record, method, caller, argsHash)) return false;
-
-  if (method === "submit_guess") {
-    const guess = args[1];
-    return (
-      typeof guess === "string" &&
-      record.phase === "REVEAL_WAIT" &&
-      record.base_locked === true &&
-      record.response_locked === true &&
-      equal(record.response, { guess }) &&
-      record.domain.answer === "" &&
-      record.domain.salt === "" &&
-      record.accepted_attempts === 0 &&
-      record.last_accepted_at === "0" &&
-      record.outcome === "" &&
-      equal(record.result, {})
-    );
-  }
-
-  if (method === "reveal_answer") {
-    return (
-      typeof args[1] === "string" &&
-      typeof args[2] === "string" &&
-      record.phase === "FROZEN" &&
-      record.base_locked === true &&
-      record.response_locked === true &&
-      typeof record.response.guess === "string" &&
-      record.domain.answer === args[1] &&
-      record.domain.salt === args[2] &&
-      record.accepted_attempts === 0 &&
-      record.last_accepted_at === "0" &&
-      record.outcome === "" &&
-      equal(record.result, {})
-    );
-  }
-
-  if (method === "expire_match") {
-    return record.phase === "DONE" && record.outcome === "VOID" && record.base_locked === true;
-  }
-
-  if (!record.response_locked || typeof record.response.guess !== "string" || !validResult(record)) return false;
-  if (!decimal(record.last_accepted_at) || record.last_accepted_at === "0") return false;
-  if (method === "evaluate_match") {
-    if (record.accepted_attempts !== 1) return false;
-  } else if (method === "retry_match") {
-    if (record.accepted_attempts !== 2 && record.accepted_attempts !== 3) return false;
-  }
-  if (record.result.label === "MATCH" || record.result.label === "NO_MATCH") {
-    return record.phase === "DONE" && record.outcome === record.result.label;
-  }
-  return record.outcome === "" && (method === "evaluate_match" ? record.phase === "UNRESOLVED" : record.accepted_attempts === 3 ? record.phase === "EXHAUSTED" : record.phase === "UNRESOLVED");
+  const { before, record, method, caller, argsHash, args, preRevision } = input;
+  return (
+    preRevision === before.revision &&
+    matchesActionPostcondition({
+      before,
+      after: record,
+      method,
+      caller,
+      argsHash,
+      args,
+    })
+  );
 }
 
 export function backupBinding(input: {

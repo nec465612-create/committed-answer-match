@@ -108,14 +108,14 @@ export function isExactCaseRecord(value: unknown): value is CaseRecord {
   ) return false;
 
   if (!objectWithKeys(record.base, ["clue", "commitment"])) return false;
-  if (typeof record.base.clue !== "string" || !validHex(record.base.commitment, 64)) return false;
+  if (!hasValidContractText(record.base.clue, 512, false) || !validHex(record.base.commitment, 64)) return false;
 
   if (typeof record.response !== "object" || record.response === null || Array.isArray(record.response)) return false;
   const response = record.response as Record<string, unknown>;
   if (Object.keys(response).length === 0) {
     if (record.response_locked !== false) return false;
   } else if (objectWithKeys(response, ["guess"])) {
-    if (typeof response.guess !== "string" || response.guess.length === 0 || record.response_locked !== true) return false;
+    if (!hasValidContractText(response.guess, 256, false) || record.response_locked !== true) return false;
   } else {
     return false;
   }
@@ -126,7 +126,7 @@ export function isExactCaseRecord(value: unknown): value is CaseRecord {
 
   if (!objectWithKeys(record.domain, ["nonce", "answer", "salt", "deadline"])) return false;
   const domain = record.domain as Record<string, unknown>;
-  if (!validHex(domain.nonce, 32) || typeof domain.answer !== "string" || typeof domain.salt !== "string" || !validDecimal(domain.deadline)) return false;
+  if (!validHex(domain.nonce, 32) || !hasValidContractText(domain.answer, 256, true) || typeof domain.salt !== "string" || !validDecimal(domain.deadline)) return false;
   if (domain.salt !== "" && !validHex(domain.salt, 32)) return false;
 
   if (typeof record.last_operation !== "object" || record.last_operation === null || Array.isArray(record.last_operation)) return false;
@@ -145,6 +145,26 @@ export function normalizeAddress(value: unknown): string {
 export function normalizeText(value: unknown): string {
   if (typeof value !== "string") throw new Error("Text is required.");
   return value.replace(/\r\n/g, "\n");
+}
+
+function hasValidContractText(value: unknown, maximum: number, allowEmpty: boolean): value is string {
+  if (typeof value !== "string") return false;
+  const normalized = normalizeText(value);
+  if (normalized !== value || (!allowEmpty && normalized.length === 0)) return false;
+  if (new TextEncoder().encode(normalized).byteLength > maximum) return false;
+  for (const character of normalized) {
+    const code = character.charCodeAt(0);
+    if (code < 32 && character !== "\n" && character !== "\t") return false;
+  }
+  return true;
+}
+
+export function validateContractText(value: unknown, maximum: number, allowEmpty = false): string {
+  const normalized = normalizeText(value);
+  if (!hasValidContractText(normalized, maximum, allowEmpty)) {
+    throw new Error("Text does not match the contract limits.");
+  }
+  return normalized;
 }
 
 function canonicalValue(value: unknown): unknown {
@@ -198,8 +218,8 @@ export async function computeCommitment(input: {
     normalizeAddress(input.creator),
     normalizeAddress(input.opponent),
     input.nonce,
-    normalizeText(input.clue),
-    normalizeText(input.answer),
+    validateContractText(input.clue, 512),
+    validateContractText(input.answer, 256),
     input.salt,
   ];
   return sha256Hex(canonicalJson(preimage));

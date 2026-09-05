@@ -30,17 +30,19 @@ import {
   randomHex,
   requireContractAddress,
   sha256Hex,
+  validateContractText,
   type CaseRead,
   type CaseRecord,
   type WriteMethod,
 } from "./contract";
-import { executeWrite, reconcileWrite } from "./chain/writeCoordinator";
+import { executeWrite, reconcileWrite, type ResolutionEvidence } from "./chain/writeCoordinator";
 import { backupBinding, matchesActionPostcondition, matchesCreatePostcondition, matchesJournalActionPostcondition } from "./verification";
 import {
   canonicalJson as journalJson,
   createBrowserJournal,
   type DurableJournal,
   type JournalRecord,
+  type UnknownJournalRecord,
 } from "./pending";
 import {
   browserDiscoveryHost,
@@ -92,6 +94,7 @@ function friendlyError(error: unknown): string {
   }
   const message = error instanceof Error ? error.message.toLowerCase() : String(error).toLowerCase();
   if (message.includes("journal lock unavailable")) return "Signing is disabled because this browser cannot provide the required journal lock.";
+  if (message.includes("unreadable") || message.includes("invalid journal")) return "The journal contains an unreadable entry. Export the raw journal before signing again.";
   if (message.includes("capacity")) return "The local operation journal is full. Export or archive completed entries before signing again.";
   if (message.includes("pending")) return "Another operation for this match is already awaiting reconciliation.";
   if (message.includes("contract is not configured")) return "This build has no contract address configured yet.";
@@ -163,11 +166,32 @@ function operationLabel(method: string): string {
   return labels[method] ?? "Match operation";
 }
 
-function journalStatusLabel(status: JournalRecord["status"]): string {
-  if (status === "VERIFIED") return "Verified";
-  if (status === "FINALIZED_ERROR") return "Finalized with no state change";
-  if (status === "RECONCILE") return "Needs reconciliation";
-  if (status === "SUBMITTED") return "Awaiting finality";
+function resolutionClass(record: JournalRecord): string {
+  try {
+    const value = JSON.parse(record.resolution_json) as { classification?: unknown };
+    return typeof value.classification === "string" ? value.classification : "";
+  } catch {
+    return "";
+  }
+}
+
+function resolutionEvidence(classification: ResolutionEvidence["classification"], details: Record<string, unknown> = {}): ResolutionEvidence {
+  return { classification, detailJson: journalJson({ classification, ...details }) };
+}
+
+function journalStatusLabel(record: JournalRecord): string {
+  if (record.status === "VERIFIED") return "Verified";
+  if (record.status === "FINALIZED_ERROR") {
+    return resolutionClass(record) === "COMPETING" ? "Finalized; competing operation retained" : "Finalized with no state change";
+  }
+  if (record.status === "RECONCILE") {
+    const classification = resolutionClass(record);
+    if (classification === "PRESENT") return "Hash missing; state present";
+    if (classification === "ABSENT") return "Hash missing; state absent";
+    if (classification === "COMPETING") return "Needs reconciliation; competing operation";
+    return "Needs reconciliation";
+  }
+  if (record.status === "SUBMITTED") return "Awaiting finality";
   return "Ready for wallet approval";
 }
 
@@ -376,11 +400,13 @@ function NewMatchView({
   wallet,
   contractAddress,
   busy,
+  signingAvailable,
   onCreate,
 }: {
   wallet: ConnectedWallet | null;
   contractAddress: string | null;
   busy: boolean;
+  signingAvailable: boolean;
   onCreate: (draft: CreateDraft) => void;
 }) {
   const [opponent, setOpponent] = useState("");
@@ -429,9 +455,9 @@ function NewMatchView({
         creator: wallet.account,
         opponent: normalizeAddress(opponent),
         nonce,
-        clue: normalizeText(clue),
+        clue: validateContractText(clue, 512),
       },
-      answer: normalizeText(answer),
+      answer: validateContractText(answer, 256),
       salt,
     };
   }
@@ -464,7 +490,16 @@ function NewMatchView({
     event.preventDefault();
     if (!wallet) { setFormError("Connect the creator wallet before creating a match."); return; }
     if (!contractAddress) { setFormError("This build has no contract address configured yet."); return; }
+    if (!signingAvailable) { setFormError("Signing is disabled until the local journal is readable and locked."); return; }
     if (!/^0x[0-9a-fA-F]{40}$/.test(opponent) || normalizeAddress(opponent) === wallet.account) { setFormError("Enter a different wallet address for the assigned guesser."); return; }
+    let normalizedClue: string;
+    try {
+      normalizedClue = validateContractText(clue, 512);
+      validateContractText(answer, 256);
+    } catch {
+      setFormError("Use public text within the contract's UTF-8 limits; only spaces, tabs and newlines are allowed as controls.");
+      return;
+    }
     if (commitment === "") { setFormError("Complete the clue and answer to create the commitment preview."); return; }
     let currentBackupBinding = "";
     try {
@@ -481,7 +516,6 @@ function NewMatchView({
     }
     if (!backupDownloaded || !backupAcknowledged || backupBindingKey !== currentBackupBinding) { setFormError("Download the current reveal backup and confirm that you saved it before creating."); return; }
     const normalizedOpponent = normalizeAddress(opponent);
-    const normalizedClue = normalizeText(clue);
     onCreate({
       nonce,
       opponent: normalizedOpponent,
@@ -507,7 +541,7 @@ function NewMatchView({
          <div className="backup-card"><div className="backup-icon"><Download size={20} /></div><div className="backup-copy"><strong>Save the reveal backup</strong><span>It contains the answer and salt needed to reveal this exact commitment.</span></div><button className="secondary-button" type="button" onClick={downloadBackup} disabled={!wallet || !contractAddress || !commitment || answer === "" || clue === "" || !/^0x[0-9a-fA-F]{40}$/.test(opponent)}><Download size={17} /> Download</button></div>
         <label className="acknowledgement"><input type="checkbox" checked={backupAcknowledged} disabled={!backupDownloaded} onChange={(event) => setBackupAcknowledged(event.target.checked)} /><span>I saved the reveal backup somewhere safe.</span></label>
         {formError && <p className="form-error" role="alert">{formError}</p>}
-        <div className="form-actions"><button className="primary-button" type="submit" disabled={busy}>{busy ? <><LoaderCircle className="spin" size={18} /> Preparing…</> : <>Create match <ArrowRight size={18} /></>}</button><span className="form-footnote">The answer and salt are not part of the create transaction.</span></div>
+        <div className="form-actions"><button className="primary-button" type="submit" disabled={busy || !signingAvailable}>{busy ? <><LoaderCircle className="spin" size={18} /> Preparing…</> : <>Create match <ArrowRight size={18} /></>}</button><span className="form-footnote">The answer and salt are not part of the create transaction.</span></div>
       </form>
     </main>
   );
@@ -517,6 +551,7 @@ function MatchView({
   loaded,
   wallet,
   busy,
+  signingAvailable,
   chainNow,
   onRefresh,
   onAction,
@@ -524,6 +559,7 @@ function MatchView({
   loaded: CaseRead;
   wallet: ConnectedWallet | null;
   busy: boolean;
+  signingAvailable: boolean;
   chainNow: string | null;
   onRefresh: () => void;
   onAction: (action: CaseAction) => void;
@@ -556,7 +592,7 @@ function MatchView({
         context.clue !== record.base.clue ||
         !/^[0-9a-f]{32}$/.test(payload.salt)
       ) throw new Error("Backup context does not match this case.");
-       const normalizedAnswer = normalizeText(payload.answer);
+       const normalizedAnswer = validateContractText(payload.answer, 256);
        const digest = await computeCommitment({
         creator: record.primary,
         opponent: record.secondary,
@@ -578,16 +614,24 @@ function MatchView({
 
   function submitGuess(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (guess === "") { setLocalError("Enter one guess before submitting."); return; }
+    if (!signingAvailable) { setLocalError("Signing is disabled until the local journal is readable and locked."); return; }
+    let normalizedGuess: string;
+    try {
+      normalizedGuess = validateContractText(guess, 256);
+    } catch {
+      setLocalError("Enter public text within the contract's UTF-8 limits; only spaces, tabs and newlines are allowed as controls.");
+      return;
+    }
     onAction({
       method: "submit_guess",
-      args: [BigInt(record.id), guess, BigInt(record.revision)],
-      journalArgs: [record.id, guess, record.revision],
+      args: [BigInt(record.id), normalizedGuess, BigInt(record.revision)],
+      journalArgs: [record.id, normalizedGuess, record.revision],
     });
   }
 
   function reveal(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!signingAvailable) { setLocalError("Signing is disabled until the local journal is readable and locked."); return; }
     if (!revealReady) { setLocalError("Verify the reveal backup first."); return; }
     onAction({
       method: "reveal_answer",
@@ -597,6 +641,7 @@ function MatchView({
   }
 
   function simpleAction(method: Exclude<WriteMethod, "create_match">, args: CalldataEncodable[], journalArgs: unknown[]) {
+    if (!signingAvailable) { setLocalError("Signing is disabled until the local journal is readable and locked."); return; }
     onAction({ method, args, journalArgs });
   }
 
@@ -606,14 +651,15 @@ function MatchView({
       <div className="match-meta"><span>Revision {record.revision}</span><span>Deadline {formatDeadline(record.domain.deadline)}</span><span>{isPrimary ? "You are the creator" : isSecondary ? "You are the guesser" : "Read-only view"}</span></div>
       <section className="match-grid">
         <article className="match-panel evidence-panel"><div className="panel-heading"><div><span className="eyebrow">Evidence</span><h2>What the case holds</h2></div><ShieldCheck size={20} /></div><dl className="evidence-list"><div><dt>Reference clue</dt><dd>{record.base.clue}</dd></div><div><dt>Guess</dt><dd>{record.response_locked && typeof record.response.guess === "string" ? record.response.guess : "Waiting for the assigned guesser"}</dd></div>{isRevealed(record) && <div><dt>Revealed answer</dt><dd>{record.domain.answer}</dd></div>}</dl>{record.outcome && <div className={`outcome-card outcome-${record.outcome.toLowerCase()}`}><span className="eyebrow">Recorded outcome</span><strong>{record.outcome.replaceAll("_", " ")}</strong>{typeof record.result.label === "string" && <span>{record.result.label}</span>}</div>}{record.phase === "UNRESOLVED" && <div className="uncertain-note">The first assessment was not conclusive. A bounded retry remains available after the cooldown.</div>}</article>
-        <article className="match-panel action-panel"><div className="panel-heading"><div><span className="eyebrow">Next action</span><h2>{record.phase === "DONE" ? "This case is complete" : "Move the case forward"}</h2></div><ChevronDown size={20} /></div>
-          {record.phase === "GUESS_OPEN" && isSecondary && <form className="inline-form" onSubmit={submitGuess}><label className="field"><span>Your one guess</span><input value={guess} onChange={(event) => setGuess(event.target.value)} maxLength={256} placeholder="Enter the answer you want recorded" required /></label><button className="primary-button" type="submit" disabled={busy}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Submit guess <ArrowRight size={17} /></>}</button></form>}
+         <article className="match-panel action-panel"><div className="panel-heading"><div><span className="eyebrow">Next action</span><h2>{record.phase === "DONE" ? "This case is complete" : "Move the case forward"}</h2></div><ChevronDown size={20} /></div>
+           {!signingAvailable && record.phase !== "DONE" && <div className="notice notice-error">Signing is disabled until the local journal is readable and locked. Refresh/export/reconcile remain available.</div>}
+           {record.phase === "GUESS_OPEN" && isSecondary && <form className="inline-form" onSubmit={submitGuess}><label className="field"><span>Your one guess</span><input value={guess} onChange={(event) => setGuess(event.target.value)} maxLength={256} placeholder="Enter the answer you want recorded" required /></label><button className="primary-button" type="submit" disabled={busy || !signingAvailable}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Submit guess <ArrowRight size={17} /></>}</button></form>}
           {record.phase === "GUESS_OPEN" && !isSecondary && <EmptyAction text="The assigned guesser wallet can submit one response." />}
-          {record.phase === "REVEAL_WAIT" && isPrimary && <form className="inline-form" onSubmit={reveal}><label className="field"><span>Reveal backup JSON</span><textarea value={backupText} onChange={(event) => { setBackupText(event.target.value); setRevealReady(null); }} placeholder="Paste the saved reveal backup here" required /></label><div className="form-actions compact"><button className="secondary-button" type="button" onClick={verifyBackup}>Verify backup</button><button className="primary-button" type="submit" disabled={busy || !revealReady}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Reveal answer <ArrowRight size={17} /></>}</button></div>{revealReady && <p className="verified-line"><Check size={16} /> Backup matches this case.</p>}</form>}
+           {record.phase === "REVEAL_WAIT" && isPrimary && <form className="inline-form" onSubmit={reveal}><label className="field"><span>Reveal backup JSON</span><textarea value={backupText} onChange={(event) => { setBackupText(event.target.value); setRevealReady(null); }} placeholder="Paste the saved reveal backup here" required /></label><div className="form-actions compact"><button className="secondary-button" type="button" onClick={verifyBackup}>Verify backup</button><button className="primary-button" type="submit" disabled={busy || !signingAvailable || !revealReady}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Reveal answer <ArrowRight size={17} /></>}</button></div>{revealReady && <p className="verified-line"><Check size={16} /> Backup matches this case.</p>}</form>}
           {record.phase === "REVEAL_WAIT" && !isPrimary && <EmptyAction text="The creator wallet must reveal the committed answer." />}
-           {record.phase === "FROZEN" && <div className="action-stack"><p className="action-explain">The inputs are frozen. Anyone may request the deterministic or consensus-backed assessment.</p><button className="primary-button" type="button" disabled={busy} onClick={() => simpleAction("evaluate_match", [BigInt(record.id), BigInt(record.revision)], [record.id, record.revision])}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Evaluate match <ArrowRight size={17} /></>}</button></div>}
-           {record.phase === "UNRESOLVED" && <div className="action-stack"><p className="action-explain">Wait at least 60 seconds from the accepted assessment, then retry the same frozen material.</p><button className="primary-button" type="button" disabled={busy} onClick={() => simpleAction("retry_match", [BigInt(record.id), BigInt(record.revision)], [record.id, record.revision])}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Retry assessment <ArrowRight size={17} /></>}</button></div>}
-           {["GUESS_OPEN", "REVEAL_WAIT", "FROZEN", "UNRESOLVED", "EXHAUSTED"].includes(record.phase) && <div className="expire-row"><button className="secondary-button" type="button" disabled={busy || !canExpire} onClick={() => simpleAction("expire_match", [BigInt(record.id), BigInt(record.revision)], [record.id, record.revision])}>Expire after deadline</button><span>{record.phase === "EXHAUSTED" ? "An exhausted case can be voided without waiting." : canExpire ? "Refreshed chain time is past the recorded deadline." : "Refresh to obtain current chain-time evidence before enabling expiry."}</span></div>}
+            {record.phase === "FROZEN" && <div className="action-stack"><p className="action-explain">The inputs are frozen. Anyone may request the deterministic or consensus-backed assessment.</p><button className="primary-button" type="button" disabled={busy || !signingAvailable} onClick={() => simpleAction("evaluate_match", [BigInt(record.id), BigInt(record.revision)], [record.id, record.revision])}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Evaluate match <ArrowRight size={17} /></>}</button></div>}
+            {record.phase === "UNRESOLVED" && <div className="action-stack"><p className="action-explain">Wait at least 60 seconds from the accepted assessment, then retry the same frozen material.</p><button className="primary-button" type="button" disabled={busy || !signingAvailable} onClick={() => simpleAction("retry_match", [BigInt(record.id), BigInt(record.revision)], [record.id, record.revision])}>{busy ? <LoaderCircle className="spin" size={17} /> : <>Retry assessment <ArrowRight size={17} /></>}</button></div>}
+            {["GUESS_OPEN", "REVEAL_WAIT", "FROZEN", "UNRESOLVED", "EXHAUSTED"].includes(record.phase) && <div className="expire-row"><button className="secondary-button" type="button" disabled={busy || !canExpire || !signingAvailable} onClick={() => simpleAction("expire_match", [BigInt(record.id), BigInt(record.revision)], [record.id, record.revision])}>Expire after deadline</button><span>{record.phase === "EXHAUSTED" ? "An exhausted case can be voided without waiting." : canExpire ? "Refreshed chain time is past the recorded deadline." : "Refresh to obtain current chain-time evidence before enabling expiry."}</span></div>}
           {record.phase === "DONE" && <div className="complete-state"><Check size={22} /><p>No further write is available for this case. Its accepted history remains readable.</p></div>}
           {localError && <p className="form-error" role="alert">{localError}</p>}
         </article>
@@ -627,10 +673,10 @@ function EmptyAction({ text }: { text: string }) {
   return <div className="empty-action"><WalletCards size={22} /><p>{text}</p></div>;
 }
 
-function JournalPanel({ records, error, signingAvailable, busyReservation, onRefresh, onReconcile }: { records: JournalRecord[]; error: string; signingAvailable: boolean; busyReservation: string | null; onRefresh: () => void; onReconcile: (record: JournalRecord) => void }) {
+function JournalPanel({ records, unknown, error, signingAvailable, busyReservation, onRefresh, onReconcile }: { records: JournalRecord[]; unknown: UnknownJournalRecord[]; error: string; signingAvailable: boolean; busyReservation: string | null; onRefresh: () => void; onReconcile: (record: JournalRecord) => void }) {
   const [copied, setCopied] = useState(false);
   function exportJournal() {
-    const blob = new Blob([JSON.stringify(records, null, 2)], { type: "application/json" });
+    const blob = new Blob([JSON.stringify({ version: 1, records, unknown }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
     link.href = url;
@@ -639,12 +685,38 @@ function JournalPanel({ records, error, signingAvailable, busyReservation, onRef
     URL.revokeObjectURL(url);
   }
   async function copySummary() {
-    await navigator.clipboard?.writeText(records.map((record) => `${operationLabel(record.method)} — ${journalStatusLabel(record.status)}`).join("\n"));
+    await navigator.clipboard?.writeText(records.map((record) => `${operationLabel(record.method)} — ${journalStatusLabel(record)}`).join("\n"));
     setCopied(true);
     setTimeout(() => setCopied(false), 1600);
   }
+  const hasJournalData = records.length > 0 || unknown.length > 0;
   return (
-    <section className="journal-section" id="journal"><div className="journal-heading"><div><span className="eyebrow">Operation journal</span><h2>Keep every attempt traceable.</h2><p>Pending entries remain visible until the same transaction is reconciled.</p></div><div className="journal-actions"><button className="secondary-button" type="button" onClick={onRefresh}><RefreshCw size={16} /> Refresh</button><button className="secondary-button" type="button" onClick={exportJournal} disabled={records.length === 0}><Download size={16} /> Export</button><button className="icon-button" type="button" aria-label="Copy journal summary" onClick={copySummary} disabled={records.length === 0}>{copied ? <Check size={17} /> : <Copy size={17} />}</button></div></div>{!signingAvailable && <div className="notice notice-error">Signing is disabled because this browser cannot provide the required journal lock. Journal reading, export and same-hash reconciliation remain available.</div>}{error && <div className="notice notice-error">{error}</div>}{records.length === 0 ? <div className="journal-empty"><WalletCards size={26} /><p>No attempts in this browser yet.</p><span>Start a match to create the first durable operation record.</span></div> : <div className="journal-list">{records.slice(-4).reverse().map((record) => <div className="journal-row" key={record.reservation}><div className="journal-row-icon"><ShieldCheck size={18} /></div><div className="journal-row-copy"><strong>{operationLabel(record.method)}</strong><span>{record.intent.startsWith("create:") ? "New public case" : "Case operation"}</span></div><span className={`journal-status journal-${record.status.toLowerCase()}`}>{journalStatusLabel(record.status)}</span>{record.tx_hash && ["SUBMITTED", "RECONCILE"].includes(record.status) && <button className="icon-button" type="button" aria-label={`Reconcile ${operationLabel(record.method)}`} onClick={() => onReconcile(record)} disabled={busyReservation !== null}>{busyReservation === record.reservation ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}</button>}</div>)}</div>}{records.length > 4 && <p className="journal-cap-note">Showing the four newest entries. Export for the complete local journal.</p>}</section>
+    <section className="journal-section" id="journal">
+      <div className="journal-heading">
+        <div><span className="eyebrow">Operation journal</span><h2>Keep every attempt traceable.</h2><p>Pending entries remain visible until the same transaction is reconciled.</p></div>
+        <div className="journal-actions">
+          <button className="secondary-button" type="button" onClick={onRefresh}><RefreshCw size={16} /> Refresh</button>
+          <button className="secondary-button" type="button" onClick={exportJournal} disabled={!hasJournalData}><Download size={16} /> Export</button>
+          <button className="icon-button" type="button" aria-label="Copy journal summary" onClick={copySummary} disabled={records.length === 0}>{copied ? <Check size={17} /> : <Copy size={17} />}</button>
+        </div>
+      </div>
+      {!signingAvailable && <div className="notice notice-error">Signing is disabled because this browser cannot provide the required journal lock. Journal reading, export and same-hash reconciliation remain available.</div>}
+      {unknown.length > 0 && <div className="notice notice-error">Unreadable journal entries are preserved below and included in the raw export. Signing stays disabled until they are recovered or quarantined.</div>}
+      {error && <div className="notice notice-error">{error}</div>}
+      {!hasJournalData ? <div className="journal-empty"><WalletCards size={26} /><p>No attempts in this browser yet.</p><span>Start a match to create the first durable operation record.</span></div> : <div className="journal-list">
+        {[...records].reverse().map((record) => <div className="journal-row" key={record.reservation}>
+          <div className="journal-row-icon"><ShieldCheck size={18} /></div>
+          <div className="journal-row-copy"><strong>{operationLabel(record.method)}</strong><span>{record.intent.startsWith("create:") ? "New public case" : "Case operation"}</span></div>
+          <span className={`journal-status journal-${record.status.toLowerCase()}`}>{journalStatusLabel(record)}</span>
+          {["SIGNING", "SUBMITTED", "RECONCILE"].includes(record.status) && <button className="icon-button" type="button" aria-label={`Reconcile ${operationLabel(record.method)}`} onClick={() => onReconcile(record)} disabled={busyReservation !== null}>{busyReservation === record.reservation ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}</button>}
+        </div>)}
+        {unknown.map((entry) => <div className="journal-row" key={entry.key}>
+          <div className="journal-row-icon"><X size={18} /></div>
+          <div className="journal-row-copy"><strong>Unreadable journal entry</strong><span>{entry.key}</span></div>
+          <span className="journal-status journal-reconcile">Raw entry preserved</span>
+        </div>)}
+      </div>}
+    </section>
   );
 }
 
@@ -661,7 +733,9 @@ export default function App() {
   const [loaded, setLoaded] = useState<CaseRead | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [journalRecords, setJournalRecords] = useState<JournalRecord[]>([]);
+  const [journalUnknown, setJournalUnknown] = useState<UnknownJournalRecord[]>([]);
   const [journalError, setJournalError] = useState("");
+  const [journalReady, setJournalReady] = useState(false);
   const [writeBusy, setWriteBusy] = useState(false);
   const [reconcileBusy, setReconcileBusy] = useState<string | null>(null);
   const [chainNow, setChainNow] = useState<string | null>(null);
@@ -669,6 +743,7 @@ export default function App() {
   const contractAddress = useMemo(() => {
     try { return requireContractAddress(); } catch { return null; }
   }, []);
+  const signingAvailable = journalReady && journal.signingAvailable && journalUnknown.length === 0;
 
   useEffect(() => registry?.subscribe(() => setWallets(registry.getWallets())), [registry]);
 
@@ -676,9 +751,13 @@ export default function App() {
 
   async function refreshJournal() {
     try {
-      setJournalRecords(await journal.list());
+      const snapshot = await journal.snapshot();
+      setJournalRecords(snapshot.records);
+      setJournalUnknown(snapshot.unknown);
+      setJournalReady(true);
       setJournalError("");
     } catch (error) {
+      setJournalReady(false);
       setJournalError(friendlyError(error));
     }
   }
@@ -751,6 +830,10 @@ export default function App() {
       setNotice({ tone: "error", text: "Connect the creator wallet and configure the contract before creating." });
       return;
     }
+    if (!signingAvailable) {
+      setNotice({ tone: "error", text: "Signing is disabled until the local journal is readable and locked." });
+      return;
+    }
     setWriteBusy(true);
     setNotice({ tone: "info", text: "The match is being submitted. Approve only the wallet request you initiated." });
     try {
@@ -770,6 +853,7 @@ export default function App() {
           argsJson,
           preRevision: "0",
           preHash: ZERO_HASH,
+          preStateJson: "",
         },
         submit: () => adapter.submit("create_match", draft.args),
         pollFinalized: async (hash, attempt) => {
@@ -796,6 +880,27 @@ export default function App() {
           if (valid && raw && record) created.value = { raw, record };
           return valid;
         },
+        verifyFinalizedError: async () => {
+          invalidateReadRequests();
+          const id = returnedCaseId ?? await readIdByNonce(wallet.account, draft.nonce);
+          if (id === "0") return resolutionEvidence("UNCHANGED", { nonce: draft.nonce });
+          const raw = await readVersion(id, "1");
+          const record = raw ? parseRecord(raw) : null;
+          if (!raw || !record) return resolutionEvidence("UNKNOWN", { case_id: id, reason: "missing_or_invalid_create_record" });
+          const valid = matchesCreatePostcondition({
+            record,
+            id,
+            account: wallet.account,
+            opponent: draft.opponent,
+            clue: draft.clue,
+            nonce: draft.nonce,
+            commitment: draft.commitment,
+            argsHash,
+          });
+          return valid
+            ? resolutionEvidence("PRESENT", { case_id: id, observed_revision: record.revision, observed_operation: record.last_operation })
+            : resolutionEvidence("COMPETING", { case_id: id, observed_revision: record.revision, observed_operation: record.last_operation });
+        },
         verifyPre: async () => {
           invalidateReadRequests();
           return (await readIdByNonce(wallet.account, draft.nonce)) === "0";
@@ -810,8 +915,8 @@ export default function App() {
         setNotice({ tone: "success", text: `Match #${created.value.record.id} is verified on-chain.` });
       } else if (outcome.status === "CANCELLED") {
         setNotice({ tone: "info", text: "Wallet approval was cancelled. No transaction was sent." });
-      } else if (outcome.status === "FINALIZED_ERROR") {
-        setNotice({ tone: "error", text: "The transaction finalized with an execution error. The case was not changed." });
+      } else if (outcome.status === "FINALIZED_ERROR" && outcome.journal) {
+        setNotice({ tone: "error", text: resolutionClass(outcome.journal) === "COMPETING" ? "The transaction finalized with an execution error while a competing case was recorded. No replacement was sent." : "The transaction finalized with an execution error. The case was not changed." });
       } else {
         setNotice({ tone: "error", text: "The attempt needs reconciliation. It remains in the journal; no second transaction was sent." });
       }
@@ -825,6 +930,10 @@ export default function App() {
   async function runCaseAction(action: CaseAction) {
     if (!wallet || !loaded || !contractAddress) {
       setNotice({ tone: "error", text: "Connect the wallet that should sign this action and configure the contract." });
+      return;
+    }
+    if (!signingAvailable) {
+      setNotice({ tone: "error", text: "Signing is disabled until the local journal is readable and locked." });
       return;
     }
     setWriteBusy(true);
@@ -847,6 +956,7 @@ export default function App() {
           argsJson,
           preRevision,
           preHash,
+          preStateJson: loaded.raw,
         },
         submit: () => adapter.submit(action.method, action.args),
         pollFinalized: adapter.pollFinalized,
@@ -865,6 +975,24 @@ export default function App() {
           if (valid && raw && record) verified = { raw, record };
           return valid;
         },
+        verifyFinalizedError: async () => {
+          invalidateReadRequests();
+          const raw = await readVersion(loaded.record.id, postRevision);
+          if (!raw) return resolutionEvidence("UNCHANGED", { case_id: loaded.record.id, preserved_revision: preRevision });
+          const record = parseRecord(raw);
+          if (!record) return resolutionEvidence("UNKNOWN", { case_id: loaded.record.id, reason: "invalid_competing_state" });
+          const valid = matchesActionPostcondition({
+            before: loaded.record,
+            after: record,
+            method: action.method,
+            caller: wallet.account,
+            argsHash,
+            args: action.journalArgs,
+          });
+          return valid
+            ? resolutionEvidence("PRESENT", { case_id: loaded.record.id, observed_revision: record.revision, observed_operation: record.last_operation })
+            : resolutionEvidence("COMPETING", { case_id: loaded.record.id, observed_revision: record.revision, observed_operation: record.last_operation });
+        },
         verifyPre: async () => {
           invalidateReadRequests();
           const raw = await readVersion(loaded.record.id, preRevision);
@@ -878,8 +1006,8 @@ export default function App() {
         setNotice({ tone: "success", text: `${operationLabel(action.method)} is verified on-chain.` });
       } else if (outcome.status === "CANCELLED") {
         setNotice({ tone: "info", text: "Wallet approval was cancelled. No transaction was sent." });
-      } else if (outcome.status === "FINALIZED_ERROR") {
-        setNotice({ tone: "error", text: "The transaction finalized with an execution error. The case history was unchanged." });
+      } else if (outcome.status === "FINALIZED_ERROR" && outcome.journal) {
+        setNotice({ tone: "error", text: resolutionClass(outcome.journal) === "COMPETING" ? "The transaction finalized with an execution error while a competing case operation was recorded. No replacement was sent." : "The transaction finalized with an execution error. The case history was unchanged." });
       } else {
         setNotice({ tone: "error", text: "The attempt needs reconciliation. It remains in the journal; no second transaction was sent." });
       }
@@ -892,10 +1020,6 @@ export default function App() {
 
   async function reconcileJournalRecord(record: JournalRecord) {
     if (reconcileBusy !== null) return;
-    if (record.tx_hash === "") {
-      setNotice({ tone: "info", text: "This reservation has no transaction hash. It remains preserved and cannot be replayed automatically." });
-      return;
-    }
     if (!contractAddress || record.chain !== chainIdDecimal() || record.contract !== contractAddress) {
       setNotice({ tone: "error", text: "This journal entry belongs to a different chain or contract and is read-only in this build." });
       return;
@@ -905,6 +1029,7 @@ export default function App() {
       setNotice({ tone: "error", text: "This journal entry has an invalid immutable operation context." });
       return;
     }
+    const resolvedIntent = intent;
     let args: unknown[];
     try {
       const parsed = JSON.parse(record.args_json) as unknown;
@@ -917,9 +1042,115 @@ export default function App() {
     const argsHash = await sha256Hex(record.args_json);
 
     setReconcileBusy(record.reservation);
-    setNotice({ tone: "info", text: "Checking the same transaction hash once. No replacement or second transaction will be sent." });
+    setNotice({ tone: "info", text: record.tx_hash === "" ? "Checking the matching on-chain state once. No transaction hash is available, so no replacement will be sent." : "Checking the same transaction hash once. No replacement or second transaction will be sent." });
     let returnedCaseId: string | null = null;
     let verified: CaseRead | null = null;
+    let before: CaseRecord | null = null;
+    let beforeResolved = false;
+
+    async function resolveBefore(): Promise<CaseRecord | null> {
+      if (resolvedIntent.kind === "create") return null;
+      if (beforeResolved) return before;
+      beforeResolved = true;
+      try {
+        if (record.pre_state_json !== "") {
+          const candidate = parseRecord(record.pre_state_json);
+          if (candidate && candidate.id === resolvedIntent.caseId && candidate.revision === resolvedIntent.preRevision && await sha256Hex(record.pre_state_json) === record.pre_hash) {
+            before = candidate;
+            return before;
+          }
+        }
+        invalidateReadRequests();
+        const raw = await readVersion(resolvedIntent.caseId, resolvedIntent.preRevision, record.contract);
+        if (!raw || await sha256Hex(raw) !== record.pre_hash) return null;
+        const candidate = parseRecord(raw);
+        if (!candidate || candidate.id !== resolvedIntent.caseId || candidate.revision !== resolvedIntent.preRevision) return null;
+        before = candidate;
+        return before;
+      } catch {
+        return null;
+      }
+    }
+
+    function createArgs(): { nonce: string; opponent: string; clue: string; commitment: string } | null {
+      if (resolvedIntent.kind !== "create" || args.length !== 4 || !args.every((value) => typeof value === "string")) return null;
+      const [nonce, opponent, clue, commitment] = args as string[];
+      return nonce === resolvedIntent.nonce ? { nonce, opponent, clue, commitment } : null;
+    }
+
+    async function lookupCreate(): Promise<ResolutionEvidence> {
+      const create = createArgs();
+      if (!create) return resolutionEvidence("UNKNOWN", { reason: "invalid_create_arguments" });
+      invalidateReadRequests();
+      const id = await readIdByNonce(record.account, create.nonce, record.contract);
+      if (id === "0") return resolutionEvidence("ABSENT", { nonce: create.nonce });
+      const raw = await readVersion(id, "1", record.contract);
+      const next = raw ? parseRecord(raw) : null;
+      if (!raw || !next) return resolutionEvidence("UNKNOWN", { case_id: id, reason: "missing_or_invalid_create_record" });
+      const valid = matchesCreatePostcondition({
+        record: next,
+        id,
+        account: record.account,
+        opponent: create.opponent,
+        clue: create.clue,
+        nonce: create.nonce,
+        commitment: create.commitment,
+        argsHash,
+      });
+      if (valid) {
+        verified = { raw, record: next };
+        return resolutionEvidence("PRESENT", { case_id: id, observed_revision: next.revision, observed_operation: next.last_operation });
+      }
+      return resolutionEvidence("COMPETING", { case_id: id, observed_revision: next.revision, observed_operation: next.last_operation });
+    }
+
+    async function lookupAction(): Promise<ResolutionEvidence> {
+      if (resolvedIntent.kind !== "action") return resolutionEvidence("UNKNOWN", { reason: "invalid_action_context" });
+      const pre = await resolveBefore();
+      if (!pre) return resolutionEvidence("UNKNOWN", { reason: "pre_state_unavailable" });
+      invalidateReadRequests();
+      const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract);
+      if (!raw) return resolutionEvidence("ABSENT", { case_id: resolvedIntent.caseId, expected_revision: nextRevision(resolvedIntent.preRevision) });
+      const next = parseRecord(raw);
+      if (!next) return resolutionEvidence("UNKNOWN", { case_id: resolvedIntent.caseId, reason: "invalid_post_state" });
+      const valid = matchesJournalActionPostcondition({
+        before: pre,
+        record: next,
+        method: resolvedIntent.method,
+        caller: record.account,
+        argsHash,
+        args,
+        preRevision: resolvedIntent.preRevision,
+      });
+      if (valid) {
+        verified = { raw, record: next };
+        return resolutionEvidence("PRESENT", { case_id: resolvedIntent.caseId, observed_revision: next.revision, observed_operation: next.last_operation });
+      }
+      return resolutionEvidence("COMPETING", { case_id: resolvedIntent.caseId, observed_revision: next.revision, observed_operation: next.last_operation });
+    }
+
+    async function finalizedErrorEvidence(): Promise<ResolutionEvidence | null> {
+      if (resolvedIntent.kind === "create") return lookupCreate();
+      const pre = await resolveBefore();
+      if (!pre) return null;
+      invalidateReadRequests();
+      const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract);
+      if (!raw) return resolutionEvidence("UNCHANGED", { case_id: resolvedIntent.caseId, preserved_revision: pre.revision });
+      const next = parseRecord(raw);
+      if (!next) return resolutionEvidence("UNKNOWN", { case_id: resolvedIntent.caseId, reason: "invalid_competing_state" });
+      const valid = matchesJournalActionPostcondition({
+        before: pre,
+        record: next,
+        method: resolvedIntent.method,
+        caller: record.account,
+        argsHash,
+        args,
+        preRevision: resolvedIntent.preRevision,
+      });
+      if (valid) return resolutionEvidence("PRESENT", { case_id: resolvedIntent.caseId, observed_revision: next.revision, observed_operation: next.last_operation });
+      return resolutionEvidence("COMPETING", { case_id: resolvedIntent.caseId, observed_revision: next.revision, observed_operation: next.last_operation });
+    }
+
     try {
       const outcome = await reconcileWrite({
         journal: record,
@@ -930,58 +1161,72 @@ export default function App() {
         },
         verifyPost: async () => {
           invalidateReadRequests();
-          if (intent.kind === "create") {
-            if (!returnedCaseId || args.length !== 4 || typeof args[0] !== "string" || typeof args[1] !== "string" || typeof args[2] !== "string" || typeof args[3] !== "string") return false;
-            if (args[0] !== intent.nonce) return false;
-            const raw = await readVersion(returnedCaseId, "1", record.contract);
+          if (resolvedIntent.kind === "create") {
+            const create = createArgs();
+            const id = returnedCaseId ?? (create ? await readIdByNonce(record.account, create.nonce, record.contract) : "0");
+            if (!create || id === "0") return false;
+            const raw = await readVersion(id, "1", record.contract);
             const next = raw ? parseRecord(raw) : null;
             if (!next) return false;
             const valid = matchesCreatePostcondition({
               record: next,
-              id: returnedCaseId,
+              id,
               account: record.account,
-              opponent: args[1],
-              clue: args[2],
-              nonce: args[0],
-              commitment: args[3],
+              opponent: create.opponent,
+              clue: create.clue,
+              nonce: create.nonce,
+              commitment: create.commitment,
               argsHash,
             });
             if (valid && raw) verified = { raw, record: next };
             return valid;
           }
-          const raw = await readVersion(intent.caseId, nextRevision(intent.preRevision), record.contract);
+          const pre = await resolveBefore();
+          if (!pre) return false;
+          const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract);
           const next = raw ? parseRecord(raw) : null;
           if (!next) return false;
           const valid = matchesJournalActionPostcondition({
+            before: pre,
             record: next,
-            method: intent.method,
+            method: resolvedIntent.method,
             caller: record.account,
             argsHash,
             args,
-            preRevision: intent.preRevision,
+            preRevision: resolvedIntent.preRevision,
           });
           if (valid && raw) verified = { raw, record: next };
           return valid;
         },
+        verifyFinalizedError: finalizedErrorEvidence,
+        lookupNoHash: resolvedIntent.kind === "create" ? lookupCreate : lookupAction,
         verifyPre: async () => {
           invalidateReadRequests();
-          if (intent.kind === "create") return (await readIdByNonce(record.account, intent.nonce, record.contract)) === "0";
-          const raw = await readVersion(intent.caseId, intent.preRevision, record.contract);
-          return raw !== null && await sha256Hex(raw) === record.pre_hash;
+          if (resolvedIntent.kind === "create") return (await readIdByNonce(record.account, resolvedIntent.nonce, record.contract)) === "0";
+          return (await resolveBefore()) !== null;
         },
       }, { journal });
       invalidateReadRequests();
       await refreshJournal();
       const verifiedRead = verified;
+      const resolvedVerified = verified as CaseRead | null;
+      const outcomeJournal = outcome.journal;
       if (outcome.status === "VERIFIED" && verifiedRead !== null) {
         setLoaded(verifiedRead);
         setCaseInput((verifiedRead as CaseRead).record.id);
         setView("match");
         setNotice({ tone: "success", text: `${operationLabel(record.method)} is verified from the retained transaction hash.` });
-      } else if (outcome.status === "FINALIZED_ERROR") {
-        setNotice({ tone: "error", text: "The retained transaction finalized with an execution error; authoritative readback confirms no state change." });
+      } else if (outcome.status === "FINALIZED_ERROR" && outcomeJournal) {
+        setNotice({ tone: "error", text: resolutionClass(outcomeJournal) === "COMPETING" ? "The retained transaction finalized with an execution error while a competing operation was recorded. No replacement was sent." : "The retained transaction finalized with an execution error; authoritative readback preserved the outcome." });
+      } else if (outcomeJournal && resolutionClass(outcomeJournal) === "PRESENT" && resolvedVerified !== null) {
+        setLoaded(resolvedVerified);
+        setCaseInput(resolvedVerified.record.id);
+        setView("match");
+        setNotice({ tone: "info", text: "The matching on-chain state is present, but this journal entry has no transaction hash. It remains preserved for audit." });
+      } else if (outcomeJournal && resolutionClass(outcomeJournal) === "ABSENT") {
+        setNotice({ tone: "info", text: "No matching on-chain state was found for this hashless reservation. It remains preserved; no transaction was sent." });
       } else {
-        setNotice({ tone: "info", text: "The retained hash is still not conclusively verified. It remains in the journal; no second transaction was sent." });
+        setNotice({ tone: "info", text: "The retained operation is still not conclusively verified. It remains in the journal; no second transaction was sent." });
       }
     } catch (error) {
       setNotice({ tone: "error", text: friendlyError(error) });
@@ -1002,10 +1247,10 @@ export default function App() {
         <div className="content-shell">
           <NoticeBanner notice={notice} onDismiss={() => setNotice(null)} />
           {view === "home" && <HomeView onNew={() => setView("new")} onOpen={openCase} />}
-          {view === "new" && <NewMatchView wallet={wallet} contractAddress={contractAddress} busy={writeBusy} onCreate={createMatch} />}
-          {view === "match" && loaded && <MatchView loaded={loaded} wallet={wallet} busy={writeBusy || reconcileBusy !== null} chainNow={chainNow} onRefresh={() => void refreshCase(loaded.record.id)} onAction={runCaseAction} />}
+          {view === "new" && <NewMatchView wallet={wallet} contractAddress={contractAddress} busy={writeBusy} signingAvailable={signingAvailable} onCreate={createMatch} />}
+          {view === "match" && loaded && <MatchView loaded={loaded} wallet={wallet} busy={writeBusy || reconcileBusy !== null} signingAvailable={signingAvailable} chainNow={chainNow} onRefresh={() => void refreshCase(loaded.record.id)} onAction={runCaseAction} />}
           {view === "match" && !loaded && <HomeView onNew={() => setView("new")} onOpen={openCase} />}
-          <JournalPanel records={journalRecords} error={journalError} signingAvailable={journal.signingAvailable} busyReservation={reconcileBusy} onRefresh={() => void refreshJournal()} onReconcile={(record) => void reconcileJournalRecord(record)} />
+          <JournalPanel records={journalRecords} unknown={journalUnknown} error={journalError} signingAvailable={signingAvailable} busyReservation={reconcileBusy} onRefresh={() => void refreshJournal()} onReconcile={(record) => void reconcileJournalRecord(record)} />
         </div>
         <footer className="site-footer"><span>Committed Answer Match</span><span>Studionet functional build</span><a href="https://docs.genlayer.com" target="_blank" rel="noreferrer">GenLayer docs <ExternalLink size={14} /></a></footer>
       </div>

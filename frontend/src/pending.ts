@@ -24,9 +24,11 @@ export interface JournalRecord {
   args_json: string;
   pre_revision: string;
   pre_hash: string;
+  pre_state_json: string;
   tx_hash: string;
   status: JournalStatus;
   created_ms: string;
+  resolution_json: string;
 }
 
 export interface SigningInput {
@@ -38,7 +40,19 @@ export interface SigningInput {
   argsJson: string;
   preRevision: string;
   preHash: string;
+  preStateJson?: string;
   createdMs?: string;
+}
+
+export interface UnknownJournalRecord {
+  key: string;
+  raw: string;
+  error: string;
+}
+
+export interface JournalSnapshot {
+  records: JournalRecord[];
+  unknown: UnknownJournalRecord[];
 }
 
 export interface LockManagerLike {
@@ -82,6 +96,13 @@ function utf8Length(value: string): number {
 
 function text(value: unknown, maximum: number): string {
   if (typeof value !== "string" || value.length === 0 || utf8Length(value) > maximum) {
+    fail("Invalid journal text.");
+  }
+  return value;
+}
+
+function textAllowEmpty(value: unknown, maximum: number): string {
+  if (typeof value !== "string" || utf8Length(value) > maximum) {
     fail("Invalid journal text.");
   }
   return value;
@@ -156,7 +177,7 @@ export function journalKey(reservation: string): string {
 
 export function validateJournalRecord(key: string, value: unknown): JournalRecord {
   if (!isObject(value)) fail("Journal record is not an object.");
-  const fields = [
+  const legacyFields = [
     "v",
     "reservation",
     "chain",
@@ -171,7 +192,8 @@ export function validateJournalRecord(key: string, value: unknown): JournalRecor
     "status",
     "created_ms",
   ] as const;
-  if (!exactKeys(value, fields)) fail("Journal record has unexpected fields.");
+  const fields = [...legacyFields, "pre_state_json", "resolution_json"] as const;
+  if (!exactKeys(value, legacyFields) && !exactKeys(value, fields)) fail("Journal record has unexpected fields.");
   if (value.v !== 1) fail("Unsupported journal version.");
   const reservation = hex(value.reservation, 32);
   if (key !== journalKey(reservation)) fail("Journal key does not match its reservation.");
@@ -184,12 +206,17 @@ export function validateJournalRecord(key: string, value: unknown): JournalRecor
   parseCanonicalJson(argsJson);
   const preRevision = decimal(value.pre_revision);
   const preHash = hex(value.pre_hash, 64);
+  const preStateJson = textAllowEmpty(value.pre_state_json ?? "", 24576);
+  if (preStateJson !== "") parseCanonicalJson(preStateJson);
   const txHash = value.tx_hash;
   if (typeof txHash !== "string" || (txHash !== "" && !/^0x[0-9a-f]{64}$/.test(txHash))) {
     fail("Invalid journal transaction hash.");
   }
   const recordStatus = status(value.status);
   const createdMs = decimal(value.created_ms);
+  const resolutionJson = textAllowEmpty(value.resolution_json ?? "{}", 8192);
+  if (resolutionJson === "") fail("Invalid journal resolution.");
+  parseCanonicalJson(resolutionJson);
   return {
     v: 1,
     reservation,
@@ -201,9 +228,11 @@ export function validateJournalRecord(key: string, value: unknown): JournalRecor
     args_json: argsJson,
     pre_revision: preRevision,
     pre_hash: preHash,
+    pre_state_json: preStateJson,
     tx_hash: txHash,
     status: recordStatus,
     created_ms: createdMs,
+    resolution_json: resolutionJson,
   };
 }
 
@@ -273,8 +302,12 @@ export class DurableJournal {
   }
 
   async list(): Promise<JournalRecord[]> {
-    if (!this.storage) return [];
-    return this.readRecordsLockFree();
+    return (await this.snapshot()).records;
+  }
+
+  async snapshot(): Promise<JournalSnapshot> {
+    if (!this.storage) return { records: [], unknown: [] };
+    return this.readSnapshotLockFree();
   }
 
   get signingAvailable(): boolean {
@@ -322,9 +355,11 @@ export class DurableJournal {
           args_json: input.argsJson,
           pre_revision: input.preRevision,
           pre_hash: input.preHash,
+          pre_state_json: input.preStateJson ?? "",
           tx_hash: "",
           status: "SIGNING",
           created_ms: input.createdMs ?? String(Date.now()),
+          resolution_json: "{}",
         };
         const key = journalKey(candidate.reservation);
         if (storage.getItem(key) === null) {
@@ -356,12 +391,16 @@ export class DurableJournal {
         "args_json",
         "pre_revision",
         "pre_hash",
+        "pre_state_json",
         "created_ms",
       ] as const) {
         if (current[field] !== validated[field]) fail("Journal immutable fields changed.");
       }
       if (current.tx_hash !== "" && current.tx_hash !== validated.tx_hash) {
         fail("Journal transaction hash is immutable.");
+      }
+      if (current.resolution_json !== "{}" && current.resolution_json !== validated.resolution_json) {
+        fail("Journal resolution is immutable.");
       }
       this.writeRecordThenIndexLocked(validated, records);
       return validated;
@@ -418,23 +457,47 @@ export class DurableJournal {
   }
 
   private readAndRebuildIndexLocked(): JournalRecord[] {
-    const sorted = this.readRecordsLockFree();
+    const snapshot = this.readSnapshotLockFree();
+    if (snapshot.unknown.length > 0) {
+      fail("Journal contains unreadable records; export or quarantine them before signing.", "data");
+    }
+    const sorted = snapshot.records;
     this.writeIndexLocked(sorted);
     return sorted;
   }
 
   private readRecordsLockFree(): JournalRecord[] {
-    if (!this.storage) return [];
+    const snapshot = this.readSnapshotLockFree();
+    if (snapshot.unknown.length > 0) {
+      fail("Journal contains unreadable records; export or quarantine them before signing.", "data");
+    }
+    return snapshot.records;
+  }
+
+  private readSnapshotLockFree(): JournalSnapshot {
+    if (!this.storage) return { records: [], unknown: [] };
     try {
       const records: JournalRecord[] = [];
+      const unknown: UnknownJournalRecord[] = [];
       for (let index = 0; index < this.storage.length; index += 1) {
         const key = this.storage.key(index);
         if (!key || !key.startsWith(JOURNAL_PREFIX) || key === JOURNAL_INDEX_KEY) continue;
         const raw = this.storage.getItem(key);
-        if (raw === null) fail("Journal record disappeared while reading.", "lock");
-        records.push(validateJournalRecord(key, JSON.parse(raw) as unknown));
+        if (raw === null) {
+          unknown.push({ key, raw: "", error: "Journal record disappeared while reading." });
+          continue;
+        }
+        try {
+          records.push(validateJournalRecord(key, JSON.parse(raw) as unknown));
+        } catch (error) {
+          unknown.push({
+            key,
+            raw,
+            error: error instanceof Error ? error.message : "Journal record is malformed.",
+          });
+        }
       }
-      return sortRecords(records);
+      return { records: sortRecords(records), unknown };
     } catch (error) {
       if (error instanceof JournalError) throw error;
       fail("Journal data could not be read.");

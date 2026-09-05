@@ -98,16 +98,38 @@ describe("exact case postconditions", () => {
     expect(matchesActionPostcondition({ before: record({ phase: "FROZEN" }), after: invalid, method: "evaluate_match", caller: B, argsHash: HASH, args: ["1", "1"] })).toBe(false);
   });
 
-  it("reconciles an action from one post-version read without fabricating a pre-state", () => {
+  it("reconciles an action only when the persisted pre-state is supplied", () => {
     const post = record({
+      phase: "REVEAL_WAIT",
+      revision: "2",
+      response: { guess: "hello" },
+      response_locked: true,
+      domain: { nonce: "b".repeat(32), answer: "", salt: "", deadline: "200" },
+      last_operation: { method: "submit_guess", caller: B, args_hash: HASH },
+    });
+    expect(matchesJournalActionPostcondition({ before: record(), record: post, method: "submit_guess", caller: B, argsHash: HASH, args: ["1", "hello", "1"], preRevision: "1" })).toBe(true);
+    expect(matchesJournalActionPostcondition({ before: record(), record: { ...post, phase: "DONE", revision: "2" }, method: "submit_guess", caller: B, argsHash: HASH, args: ["1", "hello", "1"], preRevision: "1" })).toBe(false);
+  });
+
+  it("rejects unchanged deadlines for deadline-advancing resume transitions", () => {
+    const submitWithoutAdvance = record({
       phase: "REVEAL_WAIT",
       revision: "2",
       response: { guess: "hello" },
       response_locked: true,
       last_operation: { method: "submit_guess", caller: B, args_hash: HASH },
     });
-    expect(matchesJournalActionPostcondition({ record: post, method: "submit_guess", caller: B, argsHash: HASH, args: ["1", "hello", "1"], preRevision: "1" })).toBe(true);
-    expect(matchesJournalActionPostcondition({ record: { ...post, phase: "DONE", revision: "2" }, method: "submit_guess", caller: B, argsHash: HASH, args: ["1", "hello", "1"], preRevision: "1" })).toBe(false);
+    expect(matchesJournalActionPostcondition({ before: record(), record: submitWithoutAdvance, method: "submit_guess", caller: B, argsHash: HASH, args: ["1", "hello", "1"], preRevision: "1" })).toBe(false);
+
+    const revealBefore = { ...submitWithoutAdvance, domain: { nonce: "b".repeat(32), answer: "", salt: "", deadline: "200" } } satisfies CaseRecord;
+    const revealWithoutAdvance = {
+      ...revealBefore,
+      phase: "FROZEN",
+      revision: "3",
+      domain: { nonce: "b".repeat(32), answer: "hello", salt: "c".repeat(32), deadline: "200" },
+      last_operation: { method: "reveal_answer", caller: A, args_hash: HASH },
+    } satisfies CaseRecord;
+    expect(matchesJournalActionPostcondition({ before: revealBefore, record: revealWithoutAdvance, method: "reveal_answer", caller: A, argsHash: HASH, args: ["1", "hello", "c".repeat(32), "2"], preRevision: "2" })).toBe(false);
   });
 });
 

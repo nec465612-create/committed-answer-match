@@ -12,6 +12,7 @@ export interface WritePlan {
   pollFinalized: (hash: string, attempt: number) => Promise<ContractReceipt | null>;
   verifyPost: () => Promise<boolean>;
   verifyPre: () => Promise<boolean>;
+  verifyFinalizedError?: () => Promise<ResolutionEvidence | null>;
 }
 
 export interface ReconcilePlan {
@@ -19,6 +20,15 @@ export interface ReconcilePlan {
   pollFinalized: (hash: string, attempt: number) => Promise<ContractReceipt | null>;
   verifyPost: () => Promise<boolean>;
   verifyPre: () => Promise<boolean>;
+  verifyFinalizedError?: () => Promise<ResolutionEvidence | null>;
+  lookupNoHash?: () => Promise<ResolutionEvidence | null>;
+}
+
+export type ResolutionClass = "UNCHANGED" | "COMPETING" | "PRESENT" | "ABSENT" | "UNKNOWN";
+
+export interface ResolutionEvidence {
+  classification: ResolutionClass;
+  detailJson: string;
 }
 
 export type WriteOutcome =
@@ -62,6 +72,15 @@ async function safeCheck(check: () => Promise<boolean>): Promise<boolean> {
   }
 }
 
+async function safeResolution(check: (() => Promise<ResolutionEvidence | null>) | undefined): Promise<ResolutionEvidence | null> {
+  if (!check) return null;
+  try {
+    return await check();
+  } catch {
+    return null;
+  }
+}
+
 function abortError(): Error {
   return new Error("Transaction reconciliation was cancelled.");
 }
@@ -89,6 +108,30 @@ async function wait(
       signal.removeEventListener("abort", onAbort);
       reject(error);
     });
+  });
+}
+
+async function waitUntilVisible(signal?: AbortSignal): Promise<void> {
+  if (typeof document === "undefined" || document.visibilityState !== "hidden") return;
+  if (signal?.aborted) throw abortError();
+  await new Promise<void>((resolve, reject) => {
+    const onVisibility = () => {
+      if (document.visibilityState !== "hidden") {
+        cleanup();
+        resolve();
+      }
+    };
+    const onAbort = () => {
+      cleanup();
+      reject(abortError());
+    };
+    const cleanup = () => {
+      document.removeEventListener("visibilitychange", onVisibility);
+      signal?.removeEventListener("abort", onAbort);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    onVisibility();
   });
 }
 
@@ -120,8 +163,13 @@ async function updateStatus(
   journal: DurableJournal,
   current: JournalRecord,
   status: JournalRecord["status"],
+  resolutionJson?: string,
 ): Promise<JournalRecord> {
-  return journal.update(journalKey(current.reservation), { ...current, status });
+  return journal.update(journalKey(current.reservation), {
+    ...current,
+    status,
+    ...(resolutionJson !== undefined ? { resolution_json: resolutionJson } : {}),
+  });
 }
 
 export async function executeWrite(plan: WritePlan, options: CoordinatorOptions): Promise<WriteOutcome> {
@@ -130,18 +178,19 @@ export async function executeWrite(plan: WritePlan, options: CoordinatorOptions)
   let current = await options.journal.createSigning(plan.journal);
   const key = journalKey(current.reservation);
 
-  const update = async (status: JournalRecord["status"], txHash?: string): Promise<void> => {
+  const update = async (status: JournalRecord["status"], fields: { txHash?: string; resolutionJson?: string } = {}): Promise<void> => {
     current = await options.journal.update(key, {
       ...current,
       status,
-      ...(txHash !== undefined ? { tx_hash: txHash } : {}),
+      ...(fields.txHash !== undefined ? { tx_hash: fields.txHash } : {}),
+      ...(fields.resolutionJson !== undefined ? { resolution_json: fields.resolutionJson } : {}),
     });
   };
 
   let transactionHash: string;
   try {
     transactionHash = normalizeHash(await plan.submit());
-    await update("SUBMITTED", transactionHash);
+    await update("SUBMITTED", { txHash: transactionHash });
   } catch (error) {
     if (isUserRejected(error)) {
       await options.journal.removeUnsigned(key);
@@ -155,7 +204,9 @@ export async function executeWrite(plan: WritePlan, options: CoordinatorOptions)
   let nextDelay = receiptDelays[0] ?? 0;
   for (let index = 0; index < receiptDelays.length; index += 1) {
     try {
+      await waitUntilVisible(options.signal);
       await wait(sleep, nextDelay, options.signal);
+      await waitUntilVisible(options.signal);
     } catch {
       await update("RECONCILE");
       return { status: "RECONCILE", journal: current };
@@ -186,18 +237,35 @@ export async function executeWrite(plan: WritePlan, options: CoordinatorOptions)
     return { status: "RECONCILE", journal: current };
   }
 
-  if (await safeCheck(plan.verifyPre)) {
-    await update("FINALIZED_ERROR");
-    return { status: "FINALIZED_ERROR", journal: current, receipt };
+  if (receipt.txExecutionResultName === "FINISHED_WITH_ERROR") {
+    const evidence = await safeResolution(plan.verifyFinalizedError);
+    if (evidence) {
+      await update("FINALIZED_ERROR", { resolutionJson: evidence.detailJson });
+      return { status: "FINALIZED_ERROR", journal: current, receipt };
+    }
+    if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre)) {
+      await update("FINALIZED_ERROR", { resolutionJson: '{"classification":"UNCHANGED"}' });
+      return { status: "FINALIZED_ERROR", journal: current, receipt };
+    }
   }
   await update("RECONCILE");
   return { status: "RECONCILE", journal: current };
 }
 
 export async function reconcileWrite(plan: ReconcilePlan, options: CoordinatorOptions): Promise<WriteOutcome> {
-  if (plan.journal.tx_hash === "") return { status: "RECONCILE", journal: plan.journal };
+  if (plan.journal.tx_hash === "") {
+    const evidence = await safeResolution(plan.lookupNoHash);
+    if (!evidence) return { status: "RECONCILE", journal: plan.journal };
+    try {
+      const journal = await updateStatus(options.journal, plan.journal, "RECONCILE", evidence.detailJson);
+      return { status: "RECONCILE", journal };
+    } catch {
+      return { status: "RECONCILE", journal: plan.journal };
+    }
+  }
   let receipt: ContractReceipt | null = null;
   try {
+    await waitUntilVisible(options.signal);
     receipt = await plan.pollFinalized(plan.journal.tx_hash, 1);
   } catch {
     try {
@@ -225,12 +293,23 @@ export async function reconcileWrite(plan: ReconcilePlan, options: CoordinatorOp
         return { status: "RECONCILE", journal: plan.journal };
       }
     }
-  } else if (await safeCheck(plan.verifyPre)) {
-    try {
-      const journal = await updateStatus(options.journal, plan.journal, "FINALIZED_ERROR");
-      return { status: "FINALIZED_ERROR", journal, receipt };
-    } catch {
-      return { status: "RECONCILE", journal: plan.journal };
+  } else if (receipt.txExecutionResultName === "FINISHED_WITH_ERROR") {
+    const evidence = await safeResolution(plan.verifyFinalizedError);
+    if (evidence) {
+      try {
+        const journal = await updateStatus(options.journal, plan.journal, "FINALIZED_ERROR", evidence.detailJson);
+        return { status: "FINALIZED_ERROR", journal, receipt };
+      } catch {
+        return { status: "RECONCILE", journal: plan.journal };
+      }
+    }
+    if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre)) {
+      try {
+        const journal = await updateStatus(options.journal, plan.journal, "FINALIZED_ERROR", '{"classification":"UNCHANGED"}');
+        return { status: "FINALIZED_ERROR", journal, receipt };
+      } catch {
+        return { status: "RECONCILE", journal: plan.journal };
+      }
     }
   }
 

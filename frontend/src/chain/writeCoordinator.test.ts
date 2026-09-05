@@ -1,4 +1,4 @@
-// @vitest-environment node
+// @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { executeWrite, reconcileWrite } from "./writeCoordinator";
 import { DurableJournal, canonicalJson, journalKey, type JournalStorage, type LockManagerLike } from "../pending";
@@ -76,6 +76,39 @@ describe("executeWrite", () => {
     expect(preReads).toBe(1);
   });
 
+  it("keeps an unknown finalized execution result in reconcile", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    let preReads = 0;
+    const outcome = await executeWrite(
+      plan({
+        pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "NOT_VOTED" }),
+        verifyPre: async () => { preReads += 1; return true; },
+      }),
+      { journal, sleep: async () => undefined },
+    );
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect(preReads).toBe(0);
+    expect((await journal.list())[0].status).toBe("RECONCILE");
+  });
+
+  it("classifies a finalized failed write with a competing revision", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    let preReads = 0;
+    const outcome = await executeWrite(
+      plan({
+        pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_ERROR" }),
+        verifyFinalizedError: async () => ({ classification: "COMPETING", detailJson: canonicalJson({ classification: "COMPETING", revision: "4" }) }),
+        verifyPre: async () => { preReads += 1; return true; },
+      }),
+      { journal, sleep: async () => undefined },
+    );
+
+    expect(outcome.status).toBe("FINALIZED_ERROR");
+    expect(preReads).toBe(0);
+    expect((await journal.list())[0].resolution_json).toBe(canonicalJson({ classification: "COMPETING", revision: "4" }));
+  });
+
   it("does one authoritative readback after finality and then preserves reconcile", async () => {
     const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
     let postReads = 0;
@@ -111,6 +144,44 @@ describe("executeWrite", () => {
     expect(polls).toBe(1);
     expect(postReads).toBe(1);
     expect((await journal.list())[0].status).toBe("VERIFIED");
+  });
+
+  it("looks up a hashless reservation without polling or submitting", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const original = await journal.createSigning(journalInput);
+    let polls = 0;
+    const outcome = await reconcileWrite({
+      journal: original,
+      pollFinalized: async () => { polls += 1; return null; },
+      verifyPost: async () => false,
+      verifyPre: async () => false,
+      lookupNoHash: async () => ({ classification: "ABSENT", detailJson: canonicalJson({ classification: "ABSENT" }) }),
+    }, { journal });
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect(polls).toBe(0);
+    expect((await journal.list())[0].resolution_json).toBe(canonicalJson({ classification: "ABSENT" }));
+  });
+
+  it("pauses same-hash polling while the document is hidden", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    let polls = 0;
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "hidden" });
+    const original = await journal.createSigning(journalInput);
+    const submitted = await journal.update(journalKey(original.reservation), { ...original, status: "RECONCILE", tx_hash: "0x" + "b".repeat(64) });
+    const pending = reconcileWrite({
+      journal: submitted,
+      pollFinalized: async () => { polls += 1; return { statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_RETURN" }; },
+      verifyPost: async () => true,
+      verifyPre: async () => false,
+    }, { journal, sleep: async () => undefined });
+
+    await Promise.resolve();
+    expect(polls).toBe(0);
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
+    document.dispatchEvent(new Event("visibilitychange"));
+    await expect(pending).resolves.toMatchObject({ status: "VERIFIED" });
+    Object.defineProperty(document, "visibilityState", { configurable: true, value: "visible" });
   });
 
   it("removes only an unsigned reservation after explicit wallet rejection", async () => {
