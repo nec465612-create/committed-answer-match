@@ -10,11 +10,26 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
 - `STUDIO_MATRIX_STATUS: COMPLETE — OBSERVABLE_ACTION_LEDGER`
-- `FRONTEND_MATRIX_STATUS: READY_FOR_POST_DEPLOY_MEASUREMENT`
+- `FRONTEND_MATRIX_STATUS: COMPLETE — exact-release measurement remains a later final gate`
 - `STUDIO_EVIDENCE_STATUS: COMPLETE — replacement S00–S08 logical evidence plus retrospective observable action ledger; no physical-count claim`
 - `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST`
 - `POST_DEPLOY_REVIEW_RESIDUAL: NONE — PD-001 and PD-005 closed under the current legacy measurement route`
 - `FRONTEND_EVIDENCE_STATUS: PLAN_AND_MATRIX_READY — no exact-release measurement claimed; physical release measurement and wallet-signed E2E are later POST_GITHUB_VERCEL_FINAL gates`
+
+```yaml
+RPC_BUDGET_REVISION: d0dd30e0405e73ae454eeb4a59b693701be418f3
+OFFICIAL_DOCS_CHECKED: 2026-09-05
+STUDIO_SCOPE: APPLICABLE
+FRONTEND_SCOPE: APPLICABLE
+STUDIO_MATRIX_STATUS: COMPLETE
+FRONTEND_MATRIX_STATUS: COMPLETE
+FRONTEND_EVIDENCE_STATUS: INCOMPLETE
+MULTI_CLIENT_JUSTIFICATION: "One shared read client is cached by chain; each selected wallet receives one provider-bound write client because the SDK write client must carry the active account/provider. No component creates clients."
+STUDIO_EVIDENCE_STATUS: COMPLETE
+STUDIO_STATUS_POLL_ATTEMPTS: 42
+STUDIO_RETRIES: 1
+STUDIO_DUPLICATE_TRANSACTIONS: 1
+```
 
 ## STUDIO RPC MEASUREMENT CAPABILITY PROBE
 
@@ -131,11 +146,13 @@ STUDIO_ACTION_LEDGER_SCOPE: retained replacement attempts and final S00-S08 evid
 STUDIO_ACTIONS: 22
 STUDIO_TRANSACTIONS: 22
 STUDIO_TRANSACTION_HASHES: 22 retained hashes, listed above and in the incident record
+STUDIO_PHYSICAL_REQUESTS: NOT_APPLICABLE
 STUDIO_STATUS_POLL_ATTEMPTS: 42 bounded lifecycle observations (39 for final S00-S08 and 3 for the two intermediate candidate deployments; no unbounded polling)
 STUDIO_TERMINAL_RECEIPT_READS: 22
 STUDIO_AUTHORITATIVE_READBACKS: 22
 STUDIO_RETRIES: 1 pre-hash deploy retry; no returned-hash retry
 STUDIO_DUPLICATE_TRANSACTIONS: 1 idempotent S05 create duplicate; no state change
+STUDIO_ACTION_LEDGER_STATUS: COMPLETE
 STUDIO_RATE_LIMIT_EVENTS: 3 retained schema errors in the post-run capability probe; earlier 30/min quota stops retained in diagnostics
 STUDIO_REPEATED_SCHEMA_SOURCE_RELOADS: recorded in the incident/recovery record; no replay or redeploy for measurement
 STUDIO_MATRIX_VARIANCE: "physical requests NOT_APPLICABLE; logical replacement ledger includes two rejected intermediate deployments and one disclosed idempotent duplicate; final S00-S08 semantics and readbacks pass"
@@ -170,7 +187,7 @@ later revisions.
 | Screen/workflow | Request source | RPC method | Trigger | Cache key / TTL | In-flight dedupe | Invalidation | Poll interval / attempts | Retry/backoff/cancel | Planned maximum | Transaction count | Terminal/readback condition |
 |---|---|---|---|---|---|---|---|---|---:|---:|---|
 | Landing / wallet picker | React + wallet registry | None on landing/picker open | Page load or open picker | None | N/A | N/A | None | No retry | 0 | 0 | No account request until explicit wallet selection |
-| Connect wallet | Selected EIP-1193 provider | `eth_requestAccounts`, `eth_chainId`, conditional `wallet_switchEthereumChain`, `wallet_addEthereumChain`, retry switch | One explicit wallet choice | None | No duplicate selection call | Session replacement/reload | None | Wallet errors surface; no auto reconnect | 2 when already on Studionet; up to 5 for wrong unknown chain | 0 | Exact selected account and Studionet chain |
+| Connect wallet | Selected EIP-1193 provider | `eth_requestAccounts`, `eth_accounts`, `eth_chainId`, conditional `wallet_switchEthereumChain`, `wallet_addEthereumChain`, retry switch | One explicit wallet choice | None | No duplicate selection call | Session replacement/reload | None | Wallet errors surface; no auto reconnect | 3 when already on Studionet; up to 7 for wrong unknown chain | 0 | Exact selected account and Studionet chain |
 | Journal read/export | `DurableJournal` | Browser storage only | Mount or explicit Journal Refresh/export | None | N/A | N/A | None | No RPC retry | 0 | 0 | Lock-free records remain readable/exportable; signing still requires Web Locks |
 | Open case | Shared read client | `gen_call(get_case)` | One explicit case open | Key `[61999,contract,get_case,id]`, in-flight only | Identical concurrent read shares one promise | Clear in-flight entries before authoritative write readback | None | No background retry | 1 | 0 | Exact current record parsed and shape-checked |
 | Refresh case for expiry | Shared read client | `gen_call(get_case)` + `eth_getBlockByNumber(latest)` | One explicit Refresh for an expiry-capable phase | Same read key; block read in-flight only | Same-key concurrent refresh shares one promise | Clear after state transition | None | No automatic retry; user can click again | 2 | 0 | Chain-time estimate gates expiry; local clock is informational |

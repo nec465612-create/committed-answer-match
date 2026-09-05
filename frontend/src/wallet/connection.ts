@@ -5,8 +5,14 @@ export type Address = `0x${string}`;
 
 export interface ConnectedWallet extends WalletCandidate {
   account: Address;
+  chainId: string;
   cleanup: () => void;
 }
+
+export type WalletSessionEvent =
+  | { type: "accountsChanged"; accounts: unknown }
+  | { type: "chainChanged"; chainId: unknown }
+  | { type: "disconnect" };
 
 export interface ChainLike {
   id: number;
@@ -56,10 +62,10 @@ function shouldAddChain(error: unknown): boolean {
   return message.includes("unrecognized chain") || message.includes("chain not added");
 }
 
-export async function switchToChain(provider: Eip1193Provider, chain: ChainLike = studionet): Promise<void> {
+export async function switchToChain(provider: Eip1193Provider, chain: ChainLike = studionet): Promise<string> {
   const expected = `0x${chain.id.toString(16)}`.toLowerCase();
   const current = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
-  if (current === expected) return;
+  if (current === expected) return current;
 
   const switchRequest = {
     method: "wallet_switchEthereumChain",
@@ -72,16 +78,18 @@ export async function switchToChain(provider: Eip1193Provider, chain: ChainLike 
     await provider.request({ method: "wallet_addEthereumChain", params: [chainParams(chain)] });
     await provider.request(switchRequest);
   }
+  const verified = String(await provider.request({ method: "eth_chainId" })).toLowerCase();
+  if (verified !== expected) throw new Error("The selected wallet is on the wrong network.");
+  return verified;
 }
 
-function bindReload(provider: Eip1193Provider, account: Address, reload: () => void): () => void {
+function bindReload(provider: Eip1193Provider, reload: (event: WalletSessionEvent) => void): () => void {
   if (typeof provider.on !== "function") return () => undefined;
   const accountsChanged = (value: unknown) => {
-    const next = Array.isArray(value) ? String(value[0] ?? "").toLowerCase() : "";
-    if (next !== account) reload();
+    reload({ type: "accountsChanged", accounts: value });
   };
-  const chainChanged = () => reload();
-  const disconnected = () => reload();
+  const chainChanged = (value: unknown) => reload({ type: "chainChanged", chainId: value });
+  const disconnected = () => reload({ type: "disconnect" });
   provider.on("accountsChanged", accountsChanged);
   provider.on("chainChanged", chainChanged);
   provider.on("disconnect", disconnected);
@@ -94,13 +102,14 @@ function bindReload(provider: Eip1193Provider, account: Address, reload: () => v
 
 export async function connectWallet(
   candidate: WalletCandidate,
-  options: { reload: () => void; chain?: ChainLike },
+  options: { reload: (event: WalletSessionEvent) => void; chain?: ChainLike },
 ): Promise<ConnectedWallet> {
   const accounts = await candidate.provider.request({ method: "eth_requestAccounts" });
   if (!Array.isArray(accounts) || accounts.length === 0) {
     throw new Error("No wallet account was selected.");
   }
-  const account = asAddress(accounts[0]);
-  await switchToChain(candidate.provider, options.chain ?? studionet);
-  return { ...candidate, account, cleanup: bindReload(candidate.provider, account, options.reload) };
+  const activeAccounts = await candidate.provider.request({ method: "eth_accounts" });
+  const account = asAddress(Array.isArray(activeAccounts) && activeAccounts.length > 0 ? activeAccounts[0] : accounts[0]);
+  const chainId = await switchToChain(candidate.provider, options.chain ?? studionet);
+  return { ...candidate, account, chainId, cleanup: bindReload(candidate.provider, options.reload) };
 }

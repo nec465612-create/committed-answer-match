@@ -1,5 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { WritePhase, WriteProgress } from "../chain/writeCoordinator";
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
 
 const PENDING_PHASES = new Set<WritePhase>([
   "WAITING_FOR_WALLET",
@@ -59,6 +61,15 @@ export function TransactionProgress({
   onReconcile?: () => void;
 }) {
   const [copied, setCopied] = useState(false);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return undefined;
+    const media = window.matchMedia(REDUCED_MOTION_QUERY);
+    const update = () => setReducedMotion(media.matches);
+    update();
+    media.addEventListener?.("change", update);
+    return () => media.removeEventListener?.("change", update);
+  }, []);
   if (progress.phase === "IDLE") return null;
 
   const pending = PENDING_PHASES.has(progress.phase);
@@ -80,6 +91,7 @@ export function TransactionProgress({
     <section
       className={`transaction-progress transaction-progress--${progress.phase.toLowerCase()}`}
       data-transaction-phase={progress.phase}
+      data-reduced-motion={reducedMotion ? "true" : "false"}
       role={alert ? "alert" : "status"}
       aria-live={alert ? "assertive" : "polite"}
       aria-atomic="true"

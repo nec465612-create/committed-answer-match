@@ -53,11 +53,11 @@ import {
 } from "./pending";
 import {
   browserDiscoveryHost,
-  WalletRegistry,
   type WalletCandidate,
   type WalletId,
 } from "./wallet/providers";
-import { connectWallet, type ConnectedWallet } from "./wallet/connection";
+import { type ConnectedWallet } from "./wallet/connection";
+import { createWalletStore, emptyWalletSessionState, selectWalletView, type WalletSessionState } from "./wallet/store";
 import type { CalldataEncodable } from "genlayer-js/types";
 
 const PUBLIC_WARNING = "All submitted text will be public and permanent. Do not include private information, credentials or personal records.";
@@ -227,7 +227,7 @@ function WalletPicker({
   onClose,
 }: {
   open: boolean;
-  wallets: WalletCandidate[];
+  wallets: readonly WalletCandidate[];
   busyId: WalletId | null;
   error: string;
   onSelect: (wallet: WalletCandidate) => void;
@@ -332,12 +332,14 @@ function WalletPicker({
 
 function Header({
   wallet,
+  walletView,
   onConnect,
   onHome,
   onNew,
   onJournal,
 }: {
   wallet: ConnectedWallet | null;
+  walletView: ReturnType<typeof selectWalletView>;
   onConnect: () => void;
   onHome: () => void;
   onNew: () => void;
@@ -355,7 +357,7 @@ function Header({
         <button type="button" onClick={onJournal}>Journal</button>
       </nav>
       <button className="connect-button" type="button" onClick={onConnect}>
-        {wallet ? <><span className="online-dot" /> {shortAddress(wallet.account)}</> : <>Connect wallet <ArrowRight size={17} /></>}
+        {walletView.connected && wallet ? <><span className="online-dot" /> {shortAddress(wallet.account)}</> : <>{walletView.primaryAction} <ArrowRight size={17} /></>}
       </button>
     </header>
   );
@@ -765,13 +767,15 @@ function JournalPanel({ records, unknown, error, signingAvailable, busy, busyRes
 }
 
 export default function App() {
-  const registry = useMemo(() => (typeof window === "undefined" ? null : new WalletRegistry(browserDiscoveryHost())), []);
+  const walletStore = useMemo(() => (typeof window === "undefined" ? null : createWalletStore(browserDiscoveryHost(), makeWriteAdapter)), []);
   const journal = useMemo<DurableJournal>(() => createBrowserJournal(), []);
-  const [wallets, setWallets] = useState<WalletCandidate[]>(() => registry?.getWallets() ?? []);
-  const [wallet, setWallet] = useState<ConnectedWallet | null>(null);
-  const [pickerOpen, setPickerOpen] = useState(false);
-  const [busyWallet, setBusyWallet] = useState<WalletId | null>(null);
-  const [pickerError, setPickerError] = useState("");
+  const [walletState, setWalletState] = useState<WalletSessionState>(() => walletStore?.getWalletState() ?? emptyWalletSessionState());
+  const walletView = selectWalletView(walletState);
+  const wallets = walletView.providerOptions;
+  const wallet = walletState.wallet;
+  const pickerOpen = walletView.chooserOpen;
+  const busyWallet = walletState.phase === "CONNECTING" ? walletState.selectedProvider?.id ?? null : null;
+  const pickerError = walletView.error;
   const [view, setView] = useState<View>("home");
   const [caseInput, setCaseInput] = useState("");
   const [loaded, setLoaded] = useState<CaseRead | null>(null);
@@ -800,9 +804,15 @@ export default function App() {
   }, []);
   const signingAvailable = journalReady && journal.signingAvailable && journalUnknown.length === 0;
 
-  useEffect(() => registry?.subscribe(() => setWallets(registry.getWallets())), [registry]);
+  useEffect(() => walletStore?.subscribeWalletState(() => setWalletState(walletStore.getWalletState())), [walletStore]);
 
-  useEffect(() => () => wallet?.cleanup(), [wallet]);
+  useEffect(() => () => walletStore?.destroy(), [walletStore]);
+
+  useEffect(() => {
+    if (walletState.phase === "WRONG_CHAIN" && walletState.error) {
+      setNotice({ tone: "error", text: walletState.error });
+    }
+  }, [walletState.phase, walletState.error]);
 
   async function refreshJournal() {
     try {
@@ -855,33 +865,26 @@ export default function App() {
   }
 
   async function chooseWallet(candidate: WalletCandidate) {
-    setBusyWallet(candidate.id);
-    setPickerError("");
+    if (!walletStore) return;
     try {
-      const connected = await connectWallet(candidate, { reload: () => window.location.reload() });
-      setWallet(connected);
-      setPickerOpen(false);
+      const connected = await walletStore.selectWallet(candidate);
+      if (!connected) return;
       setNotice({ tone: "success", text: `${walletLabel(candidate.id)} is ready for this session.` });
     } catch (error) {
-      setPickerError(friendlyError(error));
-    } finally {
-      setBusyWallet(null);
+      setNotice({ tone: "error", text: friendlyError(error) });
     }
   }
 
   function openWalletPicker() {
-    setPickerError("");
-    setPickerOpen(true);
+    walletStore?.openWalletPicker();
   }
 
   function closeWalletPicker() {
-    if (busyWallet !== null) return;
-    setPickerError("");
-    setPickerOpen(false);
+    walletStore?.closeWalletPicker();
   }
 
   async function createMatch(draft: CreateDraft) {
-    if (!wallet || !contractAddress) {
+    if (!wallet || !walletView.canWrite || !walletState.writeClient || !contractAddress) {
       setNotice({ tone: "error", text: "Connect the creator wallet and configure the contract before creating." });
       return;
     }
@@ -898,7 +901,7 @@ export default function App() {
     setTransactionReservation(null);
     setNotice({ tone: "info", text: "The match is being submitted. Approve only the wallet request you initiated." });
     try {
-      const adapter = makeWriteAdapter(wallet);
+      const adapter = walletState.writeClient;
       const argsJson = journalJson(draft.journalArgs);
       const intent = `create:${wallet.account}:${draft.nonce}`;
       const argsHash = await sha256Hex(argsJson);
@@ -992,7 +995,7 @@ export default function App() {
   }
 
   async function runCaseAction(action: CaseAction) {
-    if (!wallet || !loaded || !contractAddress) {
+    if (!wallet || !loaded || !walletView.canWrite || !walletState.writeClient || !contractAddress) {
       setNotice({ tone: "error", text: "Connect the wallet that should sign this action and configure the contract." });
       return;
     }
@@ -1009,7 +1012,7 @@ export default function App() {
     setTransactionReservation(null);
     setNotice({ tone: "info", text: "Preparing the selected case action. Approve only the wallet request you initiated." });
     try {
-      const adapter = makeWriteAdapter(wallet);
+      const adapter = walletState.writeClient;
       const preRevision = loaded.record.revision;
       const postRevision = nextRevision(preRevision);
       const argsJson = journalJson(action.journalArgs);
@@ -1336,7 +1339,7 @@ export default function App() {
   return (
     <div className="app-shell">
       <div ref={pageRef} className="app-page" aria-hidden={pickerOpen ? "true" : undefined}>
-        <Header wallet={wallet} onConnect={openWalletPicker} onHome={() => setView("home")} onNew={() => setView("new")} onJournal={showJournal} />
+        <Header wallet={wallet} walletView={walletView} onConnect={openWalletPicker} onHome={() => setView("home")} onNew={() => setView("new")} onJournal={showJournal} />
         <div className="content-shell">
           <NoticeBanner notice={notice} onDismiss={() => setNotice(null)} />
           <TransactionProgress

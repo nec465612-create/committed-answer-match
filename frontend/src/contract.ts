@@ -12,6 +12,7 @@ import type {
 } from "genlayer-js/types";
 import type { ConnectedWallet } from "./wallet/connection";
 import type { Eip1193Provider } from "./wallet/providers";
+import { createRpcBudgetGuard, sharedReadClient } from "./chain/rpcBudget";
 
 export const ZERO_HASH = "0".repeat(64);
 export const WRITE_METHODS = [
@@ -271,7 +272,13 @@ function parseCase(raw: unknown): CaseRead {
   return { raw, record };
 }
 
-const readClient = createClient({ chain: studionet });
+const readClient = sharedReadClient("studionet", () => createClient({ chain: studionet }));
+const readRpcBudget = createRpcBudgetGuard([
+  { id: "contract-read", maxRequests: 1000, maxRetries: 0, baseBackoffMs: 200, cacheTtlMs: 0 },
+  { id: "latest-block", maxRequests: 1000, maxRetries: 0, baseBackoffMs: 200, cacheTtlMs: 0 },
+  { id: "transaction-status", maxRequests: 1000, maxRetries: 0, baseBackoffMs: 200, cacheTtlMs: 0 },
+  { id: "terminal-receipt", maxRequests: 1000, maxRetries: 0, baseBackoffMs: 200, cacheTtlMs: 0 },
+]);
 const inFlightReads = new Map<string, Promise<unknown>>();
 let inFlightLatestBlock: Promise<string> | null = null;
 
@@ -300,17 +307,23 @@ function jsonSafe(value: unknown): unknown {
 async function readValue(functionName: string, args: CalldataEncodable[], contractAddress = requireContractAddress()): Promise<unknown> {
   const normalizedContract = normalizeAddress(contractAddress);
   const key = canonicalJson([chainIdDecimal(), normalizedContract, functionName, jsonSafe(args)]);
-  return dedupeInFlight(inFlightReads, key, () => readClient.readContract({
-    address: normalizedContract as GenLayerAddress,
-    functionName,
-    args,
-    transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+  return dedupeInFlight(inFlightReads, key, () => readRpcBudget.request({
+    rowId: "contract-read",
+    key,
+    signal: new AbortController().signal,
+    call: () => readClient.readContract({
+      address: normalizedContract as GenLayerAddress,
+      functionName,
+      args,
+      transactionHashVariant: TransactionHashVariant.LATEST_FINAL,
+    }),
   }));
 }
 
 export function invalidateReadRequests(): void {
   inFlightReads.clear();
   inFlightLatestBlock = null;
+  readRpcBudget.invalidate(() => true);
 }
 
 export async function readCase(caseId: string, contractAddress = requireContractAddress()): Promise<CaseRead> {
@@ -335,13 +348,18 @@ export async function readIdByNonce(creator: string, nonce: string, contractAddr
 
 export async function readChainTime(): Promise<string> {
   if (!inFlightLatestBlock) {
-    inFlightLatestBlock = readClient.getBlock({ blockTag: "latest" }).then((block) => {
-      const timestamp = block.timestamp;
-      if (typeof timestamp !== "bigint" && typeof timestamp !== "number" && typeof timestamp !== "string") throw new Error("Chain time unavailable.");
-      const value = String(timestamp);
-      if (!DECIMAL_RE.test(value)) throw new Error("Chain time unavailable.");
-      return value;
-    }).finally(() => { inFlightLatestBlock = null; });
+    inFlightLatestBlock = readRpcBudget.request({
+      rowId: "latest-block",
+      key: `${chainIdDecimal()}:latest`,
+      signal: new AbortController().signal,
+      call: () => readClient.getBlock({ blockTag: "latest" }),
+    }).then((block) => {
+        const timestamp = block.timestamp;
+        if (typeof timestamp !== "bigint" && typeof timestamp !== "number" && typeof timestamp !== "string") throw new Error("Chain time unavailable.");
+        const value = String(timestamp);
+        if (!DECIMAL_RE.test(value)) throw new Error("Chain time unavailable.");
+        return value;
+      }).finally(() => { inFlightLatestBlock = null; });
   }
   return inFlightLatestBlock;
 }
@@ -385,7 +403,12 @@ type RpcRequest = (args: { method: string; params?: unknown[] }) => Promise<unkn
 
 async function lightweightTransactionStatus(client: ReturnType<typeof createClient>, hash: string): Promise<string> {
   const request = client.request as unknown as RpcRequest;
-  const response = await request({ method: "gen_getTransactionStatus", params: [{ txId: hash }] });
+  const response = await readRpcBudget.request({
+    rowId: "transaction-status",
+    key: hash,
+    signal: new AbortController().signal,
+    call: () => request({ method: "gen_getTransactionStatus", params: [{ txId: hash }] }),
+  });
   if (typeof response !== "object" || response === null) throw new Error("Transaction status response is invalid.");
   const body = response as { status?: unknown; statusCode?: unknown };
   const name = statusName(body.status) ?? statusName(body.statusCode);
@@ -394,10 +417,15 @@ async function lightweightTransactionStatus(client: ReturnType<typeof createClie
 }
 
 async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, hash: string): Promise<ContractReceipt | null> {
-  const receipt = await client.waitForTransactionReceipt({
-    hash: hash as unknown as GenLayerHash,
-    status: TransactionStatus.FINALIZED,
-    retries: 0,
+  const receipt = await readRpcBudget.request({
+    rowId: "terminal-receipt",
+    key: hash,
+    signal: new AbortController().signal,
+    call: () => client.waitForTransactionReceipt({
+      hash: hash as unknown as GenLayerHash,
+      status: TransactionStatus.FINALIZED,
+      retries: 0,
+    }),
   });
   const value = receipt as unknown as Record<string, unknown>;
   const finalStatus = statusName(value.statusName ?? value.status_name ?? value.status);

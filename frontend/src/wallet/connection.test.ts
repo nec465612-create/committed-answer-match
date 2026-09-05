@@ -31,14 +31,15 @@ describe("connectWallet", () => {
 
     const connected = await connectWallet(candidate(provider), { reload });
     expect(connected.account).toBe(ACCOUNT);
-    expect(provider.request).toHaveBeenCalledTimes(2);
+    expect(connected.chainId).toBe("0xf22f");
+    expect(provider.request).toHaveBeenCalledTimes(3);
 
     listeners.get("accountsChanged")?.([ACCOUNT]);
-    expect(reload).not.toHaveBeenCalled();
+    expect(reload).toHaveBeenCalledTimes(1);
     listeners.get("accountsChanged")?.(["0x2222222222222222222222222222222222222222"]);
     listeners.get("chainChanged")?.("0x1");
     listeners.get("disconnect")?.();
-    expect(reload).toHaveBeenCalledTimes(3);
+    expect(reload).toHaveBeenCalledTimes(4);
 
     connected.cleanup();
     expect(removed).toEqual(["accountsChanged", "chainChanged", "disconnect"]);
@@ -46,15 +47,18 @@ describe("connectWallet", () => {
 
   it("adds an unknown chain and retries the switch on the selected provider only", async () => {
     let switchAttempts = 0;
+    let currentChain = "0x1";
     const methods: string[] = [];
     const provider = {
       request: vi.fn(async ({ method }: { method: string }) => {
         methods.push(method);
         if (method === "eth_requestAccounts") return [ACCOUNT];
-        if (method === "eth_chainId") return "0x1";
+        if (method === "eth_accounts") return [ACCOUNT];
+        if (method === "eth_chainId") return currentChain;
         if (method === "wallet_switchEthereumChain" && switchAttempts++ === 0) {
           throw Object.assign(new Error("chain not added"), { code: 4902 });
         }
+        if (method === "wallet_switchEthereumChain") currentChain = "0xf22f";
         return [];
       }),
     };
@@ -63,10 +67,12 @@ describe("connectWallet", () => {
     expect(connected.account).toBe(ACCOUNT);
     expect(methods).toEqual([
       "eth_requestAccounts",
+      "eth_accounts",
       "eth_chainId",
       "wallet_switchEthereumChain",
       "wallet_addEthereumChain",
       "wallet_switchEthereumChain",
+      "eth_chainId",
     ]);
     connected.cleanup();
   });

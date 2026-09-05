@@ -36,6 +36,7 @@ test("opens a real provider picker without requesting an account on page load", 
   await expect(page.getByRole("button", { name: /0x1111/i })).toBeVisible();
   expect(await page.evaluate(() => (window as Window & { __walletCalls?: string[] }).__walletCalls)).toEqual([
     "eth_requestAccounts",
+    "eth_accounts",
     "eth_chainId",
   ]);
 });
