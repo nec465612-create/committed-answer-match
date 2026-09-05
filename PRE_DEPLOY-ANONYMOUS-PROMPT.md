@@ -7,9 +7,9 @@ PROJECT: Committed Answer Match
 PROJECT PATH: E:\GenLayer-Projects\committed-answer-match
 CATEGORY: PROJECT
 CHECKPOINT: PRE_DEPLOY
-REVISION/PACKAGE: source `b255cd3359ad3a870ba61c370d4133dcd9f96a30`; package `CAM-PREDEPLOY-B255CD33-DELTA-1`
+REVISION/PACKAGE: source `b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce`; package `CAM-PREDEPLOY-B70E5CC-DELTA-2`
 DOCUMENT MODE / BASELINE: full exact-source review from the approved Stage 1/2 baseline
-STATUS: delta sent on the supplied retained route; final reviewer turn pending
+STATUS: corrective delta prepared for the supplied retained route; not yet sent
 
 ## Objective and acceptance criteria
 
@@ -19,7 +19,7 @@ Approve only if every current PRE_DEPLOY requirement passes for this exact revis
 
 ## Complete review package
 
-The implementation source revision is `b255cd3359ad3a870ba61c370d4133dcd9f96a30`. This is a delta to the already-delivered first-contact review on the retained route, not a new reviewer task. The delta adds exact method-specific verification, same-hash reconciliation, lock-free journal reading, backup binding, chain-time expiry gating, CRLF-safe reveal hashing, and the two independent RPC budget matrices. No signature, deployment transaction, contract write, Studio E2E, GitHub push, Vercel release, Explorer readback, or public release URL exists.
+The implementation source revision is `b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce`. This is a corrective delta to the already-delivered first-contact review on the retained route, not a new reviewer task. It closes exact pre-state-bound transitions, strict deadline advancement, finalized-error competing-state classification, hashless nonce/history lookup, raw journal recovery, hidden-tab polling pause, complete journal rendering, byte/control-equivalent text validation, and both independent RPC budgets. No signature, deployment transaction, contract write, Studio E2E, GitHub push, Vercel release, Explorer readback, or public release URL exists.
 
 Canonical approved upstream package identifiers (not local file hashes):
 
@@ -43,19 +43,22 @@ Exact implementation/evidence hashes:
 contracts/main.py 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
 contract-schema.json B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
 tests/test_contract.py 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
-frontend/src/App.tsx 935927EDC425818390585E86BA7B3C75E2B0A737E6187DF813A79BFD12BD3349
+frontend/src/App.tsx F63CBA37901D6516061456B08D32C44759A37E3A19E68FC5BCE5EFD33653ED2F
 frontend/src/styles.css A7413DC9BB6A7108DA0AE396DC7948AB53E42E992BBEFADFBCBFA64D12D22887
-frontend/src/contract.ts 615A558588594FBBD52266091F4D44CB0A4676BF83ECF8E4265904E168A50753
-frontend/src/contract.test.ts 89385A1A2A8EDD9E87420BDD3AB01B8F0CB9682E358A180D64DD3ADF7C07C80D
-frontend/src/pending.ts 4C239071503006187DB8733F51CC9938F6D7F646D6C1715E9D431E52FEE989A6
-frontend/src/pending.test.ts A9996DFB7D17E44C5409B259715DF0544962B61B9D291DBCD82E2AAD4FFE0726
-frontend/src/chain/writeCoordinator.ts 0B0975E34A062F3F2ABA562E1702D1DF5906E3848B771A4C732CB321876F11DE
-frontend/src/chain/writeCoordinator.test.ts 527531E4477EC972B6360CE915BEB03E850769E52905FF0B28114D70BF165652
-frontend/src/verification.ts 8E9F345FD4095EADC4206755781E853E85F69A7725C2A480A34ACFDD840E499B
-frontend/src/verification.test.ts FCE7DAEA4A79B8739564C85035B5C824D36EC471FF73EDA1086DC06FB783E05F
+frontend/src/contract.ts 2437F451292672F3EBF7B0E4CCDE84DAACA7673308FF558DEB0B72537C4A7699
+frontend/src/contract.test.ts CD0E80D741F06170CB02DF6208D0F34F89F49FD889F7E6570D14C25599F15A92
+frontend/src/pending.ts C97FB044A2D150AD333FFBFFB6ED11A0043555C09B6335EFE38075A2D7C26727
+frontend/src/pending.test.ts 1F4C1BA21A34D906580532E84839B0DCDC47AE08FE43D2BC27BCC031694D91DF
+frontend/src/chain/writeCoordinator.ts B4F78BD70F1F2CA16C482D5795BE1385B7F157E7558358C714F39600E8126EB0
+frontend/src/chain/writeCoordinator.test.ts 559CE7BBADC4A74854DAEED80BDC425D4CF19AFF4D8A66D8EBCAB9946A9A55B3
+frontend/src/verification.ts 2A5AFFE777DA95CDF1B9CE673B6EF01A7260613312D1B01C34D0111E803E06A1
+frontend/src/verification.test.ts 53AAC0212A6697202CCAA03E2398F3C36D904CCD42433D4F54D483E0FC7AB03B
 frontend/src/wallet/providers.ts A519ADB2FF99637EC51012F849B34583F48C182E85DEECD66F5046C037667A91
 frontend/src/wallet/connection.ts 7615F7B529BE0553EF3146B1E27E6414ED9BCB2B2565DE81B4CF5AC6C14A7773
-docs/RPC-BUDGET.md 595BBFF3CE433EFF3586EA501F95DBD6669FA80041263AEC0E1BA99B594BB09B
+frontend/tests/flow.spec.ts AF13FB3D63B4CB6900BF3951F69D231CCF77B253BE310BEB51C4F2AC9D1AC121
+docs/RPC-BUDGET.md 0BAC42325D794C21C78F75D2D26E4E4B9B4CD3BE598477CC5D27DC1CC5B83C42
+docs/DEPLOYMENT-MANIFEST.md 3D4E30B0E5C70DA7E8AB71D220DB74B91C152CB5561E349AA54B6FD68173263F
+docs/RECOVERY-RUNBOOK.md FD8FC2B161045C0F3272D6A81356F39D5AB5468516E42BCE77767DD7977901F9
 ~~~
 
 Relevant implementation diff summary:
@@ -146,18 +149,18 @@ npx tsc --noEmit
 pass
 
 npm test
-6 files passed; 30 tests passed
+6 files passed; 38 tests passed
 
 npm run build
 Vite build passed; 5437 modules; non-blocking warning for a minified chunk over 500 kB
 
 npm run test:e2e
-3 passed
+5 passed
 ```
 
 The contract suite covers idempotent creation/context binding, authorization and wrong phase, stale revision and atomic bad reveal, exact MATCH, consensus NO_MATCH, deliberate validator disagreement, malformed consensus, UNKNOWN/cooldown/exhaustion, explicit VOID expiry, inclusive deadlines, wrong chain context, bounded lists, and production-shaped closure serialization. The serialization test enables `VMContext.check_pickling=True` and `cloudpickle.dumps` the captured leader and validator closures after semantic assessment.
 
-Frontend E2E covers no account request on page load or picker open, exact single-provider rendering, zero-provider empty state without fake wallet choices, focus restoration, inert background, and journal-lock failure without signing. Static scans found no direct global `window.ethereum` access and no derivation of `glj1:` storage keys from `operationFingerprint`.
+Frontend E2E covers no account request on page load or picker open, exact single-provider rendering, zero-provider empty state without fake wallet choices, focus restoration, inert background, journal-lock failure with every signing control disabled, full five-plus journal rendering, and malformed raw journal preservation/export. Unit tests additionally cover strict deadline transitions, competing/unknown execution results, hashless lookup, hidden-tab pause, byte limits and control characters. Static scans found no direct global `window.ethereum` access and no derivation of `glj1:` storage keys from `operationFingerprint`.
 
 ## Delta closure matrix
 
@@ -172,6 +175,19 @@ Frontend E2E covers no account request on page load or picker open, exact single
 | F-007 CRLF answer/hash mismatch | Reveal answer is normalized with the contract's CRLF-to-LF rule before hashing and submission | `frontend/src/contract.test.ts` |
 | F-008 local clock used as expiry authority | Expiry-capable cases require an explicit latest-block chain-time read; local clock is not authoritative | `readChainTime` path and no local-clock expiry |
 | Dual RPC rule omitted Studio scope | `docs/RPC-BUDGET.md` contains both independent matrices and both evidence sections; Studio status is READY_FOR_PRE_DEPLOY_REVIEW and live Studio evidence is NOT_YET_LIVE | Package document plus exact source hash |
+| D-001 recoverability artifacts absent | Added the secret-free deployment manifest and explicit local/Studio-reset plus Studionet-reset runbook, bound to the exact source and deployer-only frozen classification | `docs/DEPLOYMENT-MANIFEST.md`; `docs/RECOVERY-RUNBOOK.md`; hashes above |
+| D-002 resume postconditions were weaker than transitions | Persisted and hash-bind the complete pre-state; resume delegates to the same exact transition table, including strict deadline advancement and preserved expiry fields | `frontend/src/pending.ts`; `frontend/src/verification.ts`; `frontend/src/verification.test.ts` |
+| D-003 failed competing commit was not classified | A finalized `FINISHED_WITH_ERROR` path performs one bounded post-revision comparison and records `UNCHANGED`, `PRESENT` or `COMPETING`; unknown execution results remain `RECONCILE` | `frontend/src/chain/writeCoordinator.ts`; `frontend/src/App.tsx`; coordinator tests |
+| D-004 hashless ambiguity had no lookup | Hashless Resume performs one create nonce/version or action history lookup, classifies the result, preserves the journal and never submits | `frontend/src/App.tsx`; `frontend/src/chain/writeCoordinator.ts`; coordinator tests |
+| D-005 create Resume required returned ID | Create verification and hashless lookup use the terminal returned ID when available and the same nonce fallback otherwise | `frontend/src/App.tsx`; create reconcile branches |
+| D-006 malformed journal data disappeared from UI | Lock-free snapshot retains each raw malformed entry, exports it, displays it, and blocks all signing until recovery/quarantine | `frontend/src/pending.ts`; `frontend/src/pending.test.ts`; `frontend/tests/flow.spec.ts` |
+| D-007 Studio S05 maximum undercounted | S05 is now `21` (`6 + 5 + 5 + 5`) with the create fallback lookup included | `docs/RPC-BUDGET.md` |
+| D-008 wrong-chain wallet path undercounted | Frontend matrix records conditional `2` calls on the right chain and up to `5` for switch/add/retry | `docs/RPC-BUDGET.md`; `frontend/src/wallet/connection.test.ts` |
+| D-009 hidden-tab polling continued | Status/reconcile waits for visibility before issuing the next probe and remains journal-recoverable | `frontend/src/chain/writeCoordinator.ts`; hidden-tab unit test |
+| D-010 unknown/NOT_VOTED was terminal error | Only exact `FINISHED_WITH_ERROR` can enter finalized-error classification; unknown execution names remain `RECONCILE` | `frontend/src/chain/writeCoordinator.ts`; coordinator test |
+| D-011 signing controls stayed enabled without lock | Lock/readiness capability is propagated to Create, Guess, Reveal, Evaluate, Retry and Expire controls and tested in browser | `frontend/src/App.tsx`; `frontend/tests/flow.spec.ts` |
+| D-012 frontend validation differed from contract bytes/controls | Shared validation enforces CRLF normalization, UTF-8 byte limits and only newline/tab controls for clue, answer and guess | `frontend/src/contract.ts`; `frontend/src/contract.test.ts` |
+| D-013 only four journal entries rendered | Journal renders all valid records plus raw unknown entries; no four-row slice remains | `frontend/src/App.tsx`; five-record Playwright test |
 
 ## Required dual RPC budget review
 
@@ -186,7 +202,7 @@ The canonical rule has two independent scopes and this delta must be reviewed ag
 | S00 deploy | 6 RPC/actions | One submission, at most 3 lifecycle probes at 2/4/8 seconds, code/hash check, count readback |
 | S01 create | 6 RPC/actions | One submission, at most 3 lifecycle probes, returned-ID readback; ID lookup plus version only when no returned ID |
 | S02/S03/S04/S08 each | 5 RPC/actions | One submission, at most 3 lifecycle probes, one exact version readback |
-| S05 semantic NO_MATCH sequence | 20 RPC/actions | Four unique writes, each bounded as above with one readback |
+| S05 semantic NO_MATCH sequence | 21 RPC/actions | Create max 6 plus guess/reveal/evaluate max 5 each; fallback nonce lookup included |
 | S06 rejected transitions | 9 RPC/actions | Three unique attempts; no replay after a hash |
 | S07 UNKNOWN/retry | 10 RPC/actions | One evaluation and retry only when live UNKNOWN plus cooldown permits |
 | Explicit read/reconcile | 1 view or 1 lifecycle probe | User-triggered only; never a submission |
@@ -198,12 +214,12 @@ Studio must use local/Direct Mode first, deploy the exact frozen source once, ex
 | Workflow | Planned maximum | Boundary |
 |---|---:|---|
 | Landing, wallet picker, journal read/export | 0 | Storage/UI only; no hidden RPC |
-| Explicit wallet connect | 2 provider calls | eth_requestAccounts plus eth_chainId |
+| Explicit wallet connect | 2 calls on Studionet; up to 5 on wrong unknown chain | eth_requestAccounts, eth_chainId, switch, add-chain, retry switch |
 | Open case | 1 view | One shared read client and exact parsed record |
 | Explicit expiry refresh | 2 views | get_case plus latest-block chain time |
 | Create write | 6 logical calls | One submission, at most 3 bounded lifecycle probes, one returned-ID readback or two-view fallback |
 | Any other case write | 5 logical calls | One submission, at most 3 bounded lifecycle probes, one exact post-readback |
-| Same-hash Resume/Reconcile | 2 logical calls | One lifecycle probe/terminal receipt plus one exact view; never submits |
+| Same-hash Resume/Reconcile | 2 logical calls when terminal; one lookup path when hashless | One lifecycle probe/terminal receipt plus one exact view, or one nonce/history lookup; hidden tab pauses; never submits |
 
 Frontend must use one shared read client/configuration per chain and contract, in-flight deduplication, no stale transaction/verdict cache, deliberate invalidation, bounded Retry-After/backoff/jitter with cancellation, and no duplicate write. Physical wallet-provider nonce/gas/preflight calls must be measured separately on the exact release. Frontend evidence is currently LOCAL_ONLY; exact deployed-release measurement remains required.
 
@@ -242,7 +258,7 @@ Current missing items are stated facts for this package: no live contract addres
 ```text
 REVIEWER: anonymous co-review AI
 CHECKPOINT: PRE_DEPLOY
-REVISION/PACKAGE: source b255cd3359ad3a870ba61c370d4133dcd9f96a30; package CAM-PREDEPLOY-B255CD33-DELTA-1
+REVISION/PACKAGE: source b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce; package CAM-PREDEPLOY-B70E5CC-DELTA-2
 VERDICT: ANONYMOUS REVIEW APPROVED - PRE_DEPLOY
 FINDINGS: NONE, or for each finding provide ID, severity, violated requirement, exact file/line/URL/artifact, evidence, cause or contradiction, impact, concrete correction, and verification criterion.
 REBUTTALS: none, or each finding ID with accepted/revised/retained decision and exact evidence.

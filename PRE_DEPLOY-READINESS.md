@@ -7,10 +7,10 @@
 | Workflow | Build |
 | Category | `PROJECT` |
 | Checkpoint | `PRE_DEPLOY` |
-| Package identity | `CAM-PREDEPLOY-B255CD33-DELTA-1` |
-| Exact source revision | `b255cd3359ad3a870ba61c370d4133dcd9f96a30` |
-| Status | `ANONYMOUS REVIEW CHANGES REQUIRED — DELTA READY FOR RETAINED REVIEWER` |
-| Anonymous reviewer delivery | `DELTA SENT TO RETAINED REVIEWER ROUTE; FINAL TURN PENDING` |
+| Package identity | `CAM-PREDEPLOY-B70E5CC-DELTA-2` |
+| Exact source revision | `b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce` |
+| Status | `ANONYMOUS REVIEW CHANGES REQUIRED — CORRECTIVE DELTA READY FOR RETAINED REVIEWER` |
+| Anonymous reviewer delivery | `NOT YET SENT — exact corrective package prepared` |
 | Studionet contract | Not deployed; no address or deployment transaction exists |
 | Studio account | Selected and locked for deployment role: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`; no secret is recorded |
 | GitHub/Vercel targets | Not supplied; no push or hosting release exists |
@@ -47,22 +47,25 @@ The current implementation is a single `CommittedAnswerMatch` contract plus a Re
 contracts/main.py 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
 contract-schema.json B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
 tests/test_contract.py 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
-frontend/src/App.tsx 935927EDC425818390585E86BA7B3C75E2B0A737E6187DF813A79BFD12BD3349
+frontend/src/App.tsx F63CBA37901D6516061456B08D32C44759A37E3A19E68FC5BCE5EFD33653ED2F
 frontend/src/styles.css A7413DC9BB6A7108DA0AE396DC7948AB53E42E992BBEFADFBCBFA64D12D22887
-frontend/src/contract.ts 615A558588594FBBD52266091F4D44CB0A4676BF83ECF8E4265904E168A50753
-frontend/src/contract.test.ts 89385A1A2A8EDD9E87420BDD3AB01B8F0CB9682E358A180D64DD3ADF7C07C80D
-frontend/src/pending.ts 4C239071503006187DB8733F51CC9938F6D7F646D6C1715E9D431E52FEE989A6
-frontend/src/pending.test.ts A9996DFB7D17E44C5409B259715DF0544962B61B9D291DBCD82E2AAD4FFE0726
-frontend/src/chain/writeCoordinator.ts 0B0975E34A062F3F2ABA562E1702D1DF5906E3848B771A4C732CB321876F11DE
-frontend/src/chain/writeCoordinator.test.ts 527531E4477EC972B6360CE915BEB03E850769E52905FF0B28114D70BF165652
-frontend/src/verification.ts 8E9F345FD4095EADC4206755781E853E85F69A7725C2A480A34ACFDD840E499B
-frontend/src/verification.test.ts FCE7DAEA4A79B8739564C85035B5C824D36EC471FF73EDA1086DC06FB783E05F
+frontend/src/contract.ts 2437F451292672F3EBF7B0E4CCDE84DAACA7673308FF558DEB0B72537C4A7699
+frontend/src/contract.test.ts CD0E80D741F06170CB02DF6208D0F34F89F49FD889F7E6570D14C25599F15A92
+frontend/src/pending.ts C97FB044A2D150AD333FFBFFB6ED11A0043555C09B6335EFE38075A2D7C26727
+frontend/src/pending.test.ts 1F4C1BA21A34D906580532E84839B0DCDC47AE08FE43D2BC27BCC031694D91DF
+frontend/src/chain/writeCoordinator.ts B4F78BD70F1F2CA16C482D5795BE1385B7F157E7558358C714F39600E8126EB0
+frontend/src/chain/writeCoordinator.test.ts 559CE7BBADC4A74854DAEED80BDC425D4CF19AFF4D8A66D8EBCAB9946A9A55B3
+frontend/src/verification.ts 2A5AFFE777DA95CDF1B9CE673B6EF01A7260613312D1B01C34D0111E803E06A1
+frontend/src/verification.test.ts 53AAC0212A6697202CCAA03E2398F3C36D904CCD42433D4F54D483E0FC7AB03B
 frontend/src/wallet/providers.ts A519ADB2FF99637EC51012F849B34583F48C182E85DEECD66F5046C037667A91
 frontend/src/wallet/connection.ts 7615F7B529BE0553EF3146B1E27E6414ED9BCB2B2565DE81B4CF5AC6C14A7773
-docs/RPC-BUDGET.md 595BBFF3CE433EFF3586EA501F95DBD6669FA80041263AEC0E1BA99B594BB09B
+frontend/tests/flow.spec.ts AF13FB3D63B4CB6900BF3951F69D231CCF77B253BE310BEB51C4F2AC9D1AC121
+docs/RPC-BUDGET.md 0BAC42325D794C21C78F75D2D26E4E4B9B4CD3BE598477CC5D27DC1CC5B83C42
+docs/DEPLOYMENT-MANIFEST.md 3D4E30B0E5C70DA7E8AB71D220DB74B91C152CB5561E349AA54B6FD68173263F
+docs/RECOVERY-RUNBOOK.md FD8FC2B161045C0F3272D6A81356F39D5AB5468516E42BCE77767DD7977901F9
 ~~~
 
-The implementation source revision is b255cd3359ad3a870ba61c370d4133dcd9f96a30. It adds exact method-specific verification, same-hash reconciliation, lock-free journal reads, backup binding, chain-time expiry gating, CRLF-safe reveal hashing, and the dual-scope RPC budget document. The user-frozen contract itself remains unchanged by any later deployment action.
+The implementation source revision is b70e5cc4a4df7857f9ab08b47bb693c06e66d7ce. It closes the retained reviewer delta with exact pre-state-bound transitions, strict deadline advancement, competing/finalized-error classification, hashless lookup, raw journal recovery, hidden-tab pause, full journal rendering, byte/control-equivalent frontend validation, and the separate Studio plus frontend RPC budgets. The user-frozen contract itself remains unchanged by any later deployment action.
 
 ## Runtime, documentation, and technical decisions
 
@@ -152,10 +155,10 @@ The following commands were executed against this exact source revision:
 | Contract lint | `genvm-lint check contracts\\main.py` | `Lint passed (3 checks)` |
 | Contract validation | `genvm-lint validate contracts\\main.py` | `Validation passed; CommittedAnswerMatch; 13 methods (7 view, 6 write)` |
 | Schema | `genvm-lint schema --json -o contract-schema.json contracts\\main.py` | `Schema written` |
-| Frontend unit | `npm test` from `frontend` | `6 files passed; 30 tests passed` |
+| Frontend unit | `npm test -- --run` from `frontend` | `6 files passed; 38 tests passed` |
 | Frontend type check | `npx tsc --noEmit` from `frontend` | Pass |
 | Frontend build | `npm run build` from `frontend` | `Vite build passed; 5437 modules; non-blocking >500 kB chunk warning` |
-| Browser E2E | `npm run test:e2e` from `frontend` | `3 passed` |
+| Browser E2E | `npm run test:e2e` from `frontend` | `5 passed` |
 | Closure serialization | `cloudpickle.dumps` of captured leader and validator with `VMContext.check_pickling=True` | Passed in the installed Direct Mode runtime; no pickling error |
 | Static trust scans | bounded `rg` scans for forbidden provider singleton and journal-key derivation | No forbidden matches |
 
