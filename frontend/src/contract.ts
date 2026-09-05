@@ -8,7 +8,6 @@ import {
 import type {
   Address as GenLayerAddress,
   CalldataEncodable,
-  Hash as GenLayerHash,
 } from "genlayer-js/types";
 import type { ConnectedWallet } from "./wallet/connection";
 import type { Eip1193Provider } from "./wallet/providers";
@@ -350,7 +349,11 @@ const EXECUTION_RESULT_NAMES = Object.values(ExecutionResult) as string[];
 
 function statusName(value: unknown): string | undefined {
   if (typeof value === "string") {
-    if (TRANSACTION_STATUS_NAMES.includes(value)) return value;
+    const normalized = value
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      .replace(/[\s-]+/g, "_")
+      .toUpperCase();
+    if (TRANSACTION_STATUS_NAMES.includes(normalized)) return normalized;
     const numeric = Number(value);
     return Number.isInteger(numeric) ? TRANSACTION_STATUS_NAMES[numeric] : undefined;
   }
@@ -360,7 +363,11 @@ function statusName(value: unknown): string | undefined {
 
 function executionResultName(value: unknown): string | undefined {
   if (typeof value === "string") {
-    if (EXECUTION_RESULT_NAMES.includes(value)) return value;
+    const normalized = value
+      .replace(/([a-z])([A-Z])/g, "$1_$2")
+      .replace(/[\s-]+/g, "_")
+      .toUpperCase();
+    if (EXECUTION_RESULT_NAMES.includes(normalized)) return normalized;
     const numeric = Number(value);
     return Number.isInteger(numeric) ? EXECUTION_RESULT_NAMES[numeric] : undefined;
   }
@@ -397,28 +404,31 @@ async function lightweightTransactionStatus(client: ReturnType<typeof createClie
   return name;
 }
 
+export function parseTransactionReceipt(raw: unknown): ContractReceipt | null {
+  if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return null;
+  const value = raw as Record<string, unknown>;
+  const finalStatus = statusName(value.statusName ?? value.status_name ?? value.status);
+  if (finalStatus !== TransactionStatus.FINALIZED) return null;
+  const execution = executionResultName(value.txExecutionResultName ?? value.tx_execution_result_name ?? value.txExecutionResult ?? value.tx_execution_result ?? value.result);
+  const id = typeof value.id === "string" ? value.id : undefined;
+  return {
+    statusName: finalStatus,
+    txExecutionResultName: execution,
+    hash: typeof value.hash === "string" ? value.hash : id,
+    txId: typeof value.txId === "string" ? value.txId : typeof value.tx_id === "string" ? value.tx_id : id,
+    returnedCaseId: returnedCaseId(raw),
+  };
+}
+
 async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, hash: string, signal?: AbortSignal): Promise<ContractReceipt | null> {
+  const request = client.request as unknown as RpcRequest;
   const receipt = await readRpcBudget.request({
     rowId: "terminal-receipt",
     key: hash,
     signal: signal ?? new AbortController().signal,
-    call: () => client.waitForTransactionReceipt({
-      hash: hash as unknown as GenLayerHash,
-      status: TransactionStatus.FINALIZED,
-      retries: 0,
-    }),
+    call: () => request({ method: "gen_getTransactionReceipt", params: [{ txId: hash }] }),
   });
-  const value = receipt as unknown as Record<string, unknown>;
-  const finalStatus = statusName(value.statusName ?? value.status_name ?? value.status);
-  if (finalStatus !== TransactionStatus.FINALIZED) return null;
-  const execution = executionResultName(value.txExecutionResultName ?? value.tx_execution_result_name ?? value.txExecutionResult ?? value.tx_execution_result);
-  return {
-    statusName: finalStatus,
-    txExecutionResultName: execution,
-    hash: typeof value.hash === "string" ? value.hash : undefined,
-    txId: typeof value.txId === "string" ? value.txId : typeof value.tx_id === "string" ? value.tx_id : undefined,
-    returnedCaseId: returnedCaseId(receipt),
-  };
+  return parseTransactionReceipt(receipt);
 }
 
 async function pollClientFinalized(client: ReturnType<typeof createClient>, hash: string, attempt: number, signal?: AbortSignal): Promise<ContractReceipt | null> {

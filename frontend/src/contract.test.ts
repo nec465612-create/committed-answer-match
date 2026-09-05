@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import { normalizeText, validateContractText } from "./contract";
+import { normalizeText, parseTransactionReceipt, validateContractText } from "./contract";
 
 describe("read request safeguards", () => {
   it("normalizes CRLF before a reveal is hashed or submitted", () => {
@@ -20,5 +20,26 @@ describe("read request safeguards", () => {
     expect(() => validateContractText("high\ud800", 512)).toThrow();
     expect(() => validateContractText("low\udc00", 512)).toThrow();
     expect(validateContractText("paired\ud83d\ude00", 512)).toBe("paired\ud83d\ude00");
+  });
+});
+
+describe("transaction receipt parsing", () => {
+  it("accepts the direct GenLayer receipt shape without the legacy SDK lookup", () => {
+    expect(parseTransactionReceipt({
+      id: "0x" + "a".repeat(64),
+      status: 7,
+      statusName: "Finalized",
+      txExecutionResult: 1,
+      txExecutionResultName: "FinishedWithReturn",
+    })).toMatchObject({
+      statusName: "FINALIZED",
+      txExecutionResultName: "FINISHED_WITH_RETURN",
+      txId: "0x" + "a".repeat(64),
+      hash: "0x" + "a".repeat(64),
+    });
+  });
+
+  it("does not treat a non-final receipt as terminal", () => {
+    expect(parseTransactionReceipt({ status: 5, statusName: "Accepted" })).toBeNull();
   });
 });
