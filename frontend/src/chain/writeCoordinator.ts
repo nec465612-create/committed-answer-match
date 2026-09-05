@@ -203,7 +203,27 @@ async function updateStatus(
   });
 }
 
+let lifecycleInFlight = false;
+
+function enterLifecycle(): void {
+  if (lifecycleInFlight) throw new Error("Another transaction lifecycle is already active.");
+  lifecycleInFlight = true;
+}
+
+function leaveLifecycle(): void {
+  lifecycleInFlight = false;
+}
+
 export async function executeWrite(plan: WritePlan, options: CoordinatorOptions): Promise<WriteOutcome> {
+  enterLifecycle();
+  try {
+    return await executeWriteInternal(plan, options);
+  } finally {
+    leaveLifecycle();
+  }
+}
+
+async function executeWriteInternal(plan: WritePlan, options: CoordinatorOptions): Promise<WriteOutcome> {
   const sleep = options.sleep ?? ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
   const receiptDelays = [...(options.receiptDelays ?? DEFAULT_RECEIPT_DELAYS)].slice(0, MAX_RECEIPT_QUERIES);
   let current = await options.journal.createSigning(plan.journal);
@@ -355,6 +375,15 @@ export async function executeWrite(plan: WritePlan, options: CoordinatorOptions)
 }
 
 export async function reconcileWrite(plan: ReconcilePlan, options: CoordinatorOptions): Promise<WriteOutcome> {
+  enterLifecycle();
+  try {
+    return await reconcileWriteInternal(plan, options);
+  } finally {
+    leaveLifecycle();
+  }
+}
+
+async function reconcileWriteInternal(plan: ReconcilePlan, options: CoordinatorOptions): Promise<WriteOutcome> {
   let current = plan.journal;
   const retainReconciliation = async (message?: string, resolutionJson?: string): Promise<JournalRecord> => {
     const fallback: JournalRecord = {

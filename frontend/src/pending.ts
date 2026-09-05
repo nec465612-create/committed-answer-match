@@ -292,6 +292,29 @@ function storageError(): never {
   fail("Journal lock unavailable.", "lock");
 }
 
+const TERMINAL_RESOLUTION_CLASSES = ["UNCHANGED", "PRESENT", "COMPETING"] as const;
+const UNRESOLVED_RESOLUTION_CLASSES = ["ABSENT", "UNKNOWN"] as const;
+
+function resolutionClass(value: string): string | null {
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    if (!isObject(parsed) || typeof parsed.classification !== "string") return null;
+    return parsed.classification;
+  } catch {
+    return null;
+  }
+}
+
+function canAdvanceResolution(current: string, next: string): boolean {
+  if (current === next || current === "{}") return true;
+  const currentClass = resolutionClass(current);
+  const nextClass = resolutionClass(next);
+  return (
+    UNRESOLVED_RESOLUTION_CLASSES.includes(currentClass as (typeof UNRESOLVED_RESOLUTION_CLASSES)[number]) &&
+    TERMINAL_RESOLUTION_CLASSES.includes(nextClass as (typeof TERMINAL_RESOLUTION_CLASSES)[number])
+  );
+}
+
 export class DurableJournal {
   private readonly storage: JournalStorage | null;
   private readonly locks: LockManagerLike | null;
@@ -321,6 +344,7 @@ export class DurableJournal {
   }
 
   async createSigning(input: SigningInput): Promise<JournalRecord> {
+    if (!this.signingHealthy) storageError();
     if (!this.storage) storageError();
     const storage = this.storage;
     return this.withLock(async () => {
@@ -405,7 +429,7 @@ export class DurableJournal {
       if (current.tx_hash !== "" && current.tx_hash !== validated.tx_hash) {
         fail("Journal transaction hash is immutable.");
       }
-      if (current.resolution_json !== "{}" && current.resolution_json !== validated.resolution_json) {
+      if (!canAdvanceResolution(current.resolution_json, validated.resolution_json)) {
         fail("Journal resolution is immutable.");
       }
       this.writeRecordThenIndexLocked(validated, records);

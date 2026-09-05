@@ -150,6 +150,7 @@ a { color: inherit; }
 .journal-row-copy { display: flex; flex-direction: column; gap: 4px; margin-right: auto; }
 .journal-row-copy strong { font-size: 13px; }
 .journal-row-copy span { color: var(--muted); font-size: 11px; }
+.journal-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; margin-top: 14px; color: var(--muted); font-size: 12px; }
 .journal-status { font-size: 10px; font-weight: 800; color: var(--muted); }
 .journal-verified { color: var(--green); }
 .journal-finalized_error { color: #a44739; }
@@ -228,5 +229,6 @@ a { color: inherit; }
   .backup-card { align-items: flex-start; flex-wrap: wrap; }
   .backup-copy { min-width: calc(100% - 56px); margin-right: 0; }
   .journal-actions { flex-wrap: wrap; }
+  .journal-pagination { justify-content: flex-start; flex-wrap: wrap; }
   .journal-status { max-width: 105px; text-align: right; }
 }

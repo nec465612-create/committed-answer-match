@@ -692,8 +692,9 @@ function EmptyAction({ text }: { text: string }) {
   return <div className="empty-action"><WalletCards size={22} /><p>{text}</p></div>;
 }
 
-function JournalPanel({ records, unknown, error, signingAvailable, busyReservation, onRefresh, onReconcile }: { records: JournalRecord[]; unknown: UnknownJournalRecord[]; error: string; signingAvailable: boolean; busyReservation: string | null; onRefresh: () => void; onReconcile: (record: JournalRecord) => void }) {
+function JournalPanel({ records, unknown, error, signingAvailable, busy, busyReservation, onRefresh, onReconcile }: { records: JournalRecord[]; unknown: UnknownJournalRecord[]; error: string; signingAvailable: boolean; busy: boolean; busyReservation: string | null; onRefresh: () => void; onReconcile: (record: JournalRecord) => void }) {
   const [copied, setCopied] = useState(false);
+  const [page, setPage] = useState(0);
   function exportJournal() {
     const blob = new Blob([JSON.stringify({ version: 1, records, unknown }, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
@@ -709,6 +710,14 @@ function JournalPanel({ records, unknown, error, signingAvailable, busyReservati
     setTimeout(() => setCopied(false), 1600);
   }
   const hasJournalData = records.length > 0 || unknown.length > 0;
+  const pageSize = 4;
+  const journalItems = [
+    ...[...records].reverse().map((record) => ({ kind: "record" as const, key: record.reservation, record })),
+    ...unknown.map((entry) => ({ kind: "unknown" as const, key: entry.key, entry })),
+  ];
+  const pageCount = Math.max(1, Math.ceil(journalItems.length / pageSize));
+  const currentPage = Math.min(page, pageCount - 1);
+  const visibleItems = journalItems.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
   return (
     <section className="journal-section" id="journal">
       <div className="journal-heading">
@@ -722,19 +731,25 @@ function JournalPanel({ records, unknown, error, signingAvailable, busyReservati
       {!signingAvailable && <div className="notice notice-error">Signing is disabled because the durable journal lock or storage health check is unavailable. Journal reading, export and same-hash reconciliation remain available.</div>}
       {unknown.length > 0 && <div className="notice notice-error">Unreadable journal entries are preserved below and included in the raw export. Signing stays disabled until they are recovered or quarantined.</div>}
       {error && <div className="notice notice-error">{error}</div>}
-      {!hasJournalData ? <div className="journal-empty"><WalletCards size={26} /><p>No attempts in this browser yet.</p><span>Start a match to create the first durable operation record.</span></div> : <div className="journal-list">
-        {[...records].reverse().map((record) => <div className="journal-row" key={record.reservation}>
-          <div className="journal-row-icon"><ShieldCheck size={18} /></div>
-          <div className="journal-row-copy"><strong>{operationLabel(record.method)}</strong><span>{record.intent.startsWith("create:") ? "New public case" : "Case operation"}</span></div>
-          <span className={`journal-status journal-${record.status.toLowerCase()}`}>{journalStatusLabel(record)}</span>
-          {["SIGNING", "SUBMITTED", "RECONCILE"].includes(record.status) && <button className="icon-button" type="button" aria-label={`Reconcile ${operationLabel(record.method)}`} onClick={() => onReconcile(record)} disabled={busyReservation !== null}>{busyReservation === record.reservation ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}</button>}
-        </div>)}
-        {unknown.map((entry) => <div className="journal-row" key={entry.key}>
-          <div className="journal-row-icon"><X size={18} /></div>
-          <div className="journal-row-copy"><strong>Unreadable journal entry</strong><span>{entry.key}</span></div>
-          <span className="journal-status journal-reconcile">Raw entry preserved</span>
-        </div>)}
-      </div>}
+      {!hasJournalData ? <div className="journal-empty"><WalletCards size={26} /><p>No attempts in this browser yet.</p><span>Start a match to create the first durable operation record.</span></div> : <>
+        <div className="journal-list">
+          {visibleItems.map((item) => item.kind === "record" ? <div className="journal-row" key={item.key}>
+            <div className="journal-row-icon"><ShieldCheck size={18} /></div>
+            <div className="journal-row-copy"><strong>{operationLabel(item.record.method)}</strong><span>{item.record.intent.startsWith("create:") ? "New public case" : "Case operation"}</span></div>
+            <span className={`journal-status journal-${item.record.status.toLowerCase()}`}>{journalStatusLabel(item.record)}</span>
+            {["SIGNING", "SUBMITTED", "RECONCILE"].includes(item.record.status) && <button className="icon-button" type="button" aria-label={`Reconcile ${operationLabel(item.record.method)}`} onClick={() => onReconcile(item.record)} disabled={busy || busyReservation !== null}>{busyReservation === item.record.reservation ? <LoaderCircle className="spin" size={17} /> : <RefreshCw size={17} />}</button>}
+          </div> : <div className="journal-row" key={item.key}>
+            <div className="journal-row-icon"><X size={18} /></div>
+            <div className="journal-row-copy"><strong>Unreadable journal entry</strong><span>{item.entry.key}</span></div>
+            <span className="journal-status journal-reconcile">Raw entry preserved</span>
+          </div>)}
+        </div>
+        {pageCount > 1 && <nav className="journal-pagination" aria-label="Journal pages">
+          <button className="secondary-button" type="button" aria-label="Previous journal page" onClick={() => setPage(currentPage - 1)} disabled={currentPage === 0}>Previous</button>
+          <span aria-live="polite">Page {currentPage + 1} of {pageCount}</span>
+          <button className="secondary-button" type="button" aria-label="Next journal page" onClick={() => setPage(currentPage + 1)} disabled={currentPage === pageCount - 1}>Next</button>
+        </nav>}
+      </>}
     </section>
   );
 }
@@ -760,6 +775,15 @@ export default function App() {
   const [chainNow, setChainNow] = useState<string | null>(null);
   const [transactionProgress, setTransactionProgress] = useState<WriteProgress>(INITIAL_WRITE_PROGRESS);
   const [transactionReservation, setTransactionReservation] = useState<string | null>(null);
+  const lifecycleActiveRef = useRef(false);
+  function beginLifecycle(): boolean {
+    if (lifecycleActiveRef.current) return false;
+    lifecycleActiveRef.current = true;
+    return true;
+  }
+  function endLifecycle(): void {
+    lifecycleActiveRef.current = false;
+  }
   const pageRef = useRef<HTMLDivElement | null>(null);
   const contractAddress = useMemo(() => {
     try { return requireContractAddress(); } catch { return null; }
@@ -853,6 +877,10 @@ export default function App() {
     }
     if (!signingAvailable) {
       setNotice({ tone: "error", text: "Signing is disabled until the local journal lock and storage health are restored." });
+      return;
+    }
+    if (!beginLifecycle()) {
+      setNotice({ tone: "info", text: "Another transaction lifecycle is already active. Wait for it to finish before starting a new one." });
       return;
     }
     setWriteBusy(true);
@@ -950,6 +978,7 @@ export default function App() {
       setNotice({ tone: "error", text: friendlyError(error) });
     } finally {
       setWriteBusy(false);
+      endLifecycle();
     }
   }
 
@@ -960,6 +989,10 @@ export default function App() {
     }
     if (!signingAvailable) {
       setNotice({ tone: "error", text: "Signing is disabled until the local journal lock and storage health are restored." });
+      return;
+    }
+    if (!beginLifecycle()) {
+      setNotice({ tone: "info", text: "Another transaction lifecycle is already active. Wait for it to finish before starting a new one." });
       return;
     }
     setWriteBusy(true);
@@ -1046,11 +1079,15 @@ export default function App() {
       setNotice({ tone: "error", text: friendlyError(error) });
     } finally {
       setWriteBusy(false);
+      endLifecycle();
     }
   }
 
   async function reconcileJournalRecord(record: JournalRecord) {
-    if (reconcileBusy !== null) return;
+    if (lifecycleActiveRef.current || reconcileBusy !== null) {
+      setNotice({ tone: "info", text: "Another transaction lifecycle is already active. Wait for it to finish before reconciling." });
+      return;
+    }
     if (!contractAddress || record.chain !== chainIdDecimal() || record.contract !== contractAddress) {
       setNotice({ tone: "error", text: "This journal entry belongs to a different chain or contract and is read-only in this build." });
       return;
@@ -1072,6 +1109,10 @@ export default function App() {
     }
     const argsHash = await sha256Hex(record.args_json);
 
+    if (!beginLifecycle()) {
+      setNotice({ tone: "info", text: "Another transaction lifecycle is already active. Wait for it to finish before reconciling." });
+      return;
+    }
     setReconcileBusy(record.reservation);
     setTransactionReservation(record.reservation);
     setTransactionProgress({
@@ -1271,6 +1312,7 @@ export default function App() {
       setNotice({ tone: "error", text: friendlyError(error) });
     } finally {
       setReconcileBusy(null);
+      endLifecycle();
     }
   }
 
@@ -1282,6 +1324,7 @@ export default function App() {
   const progressRecord = transactionReservation === null
     ? null
     : journalRecords.find((record) => record.reservation === transactionReservation) ?? null;
+  const lifecycleBusy = writeBusy || reconcileBusy !== null;
 
   return (
     <div className="app-shell">
@@ -1292,13 +1335,13 @@ export default function App() {
           <TransactionProgress
             progress={transactionProgress}
             explorerUrl={transactionProgress.hash ? explorerTransactionUrl(transactionProgress.hash) : undefined}
-            onReconcile={progressRecord && reconcileBusy === null ? () => void reconcileJournalRecord(progressRecord) : undefined}
+            onReconcile={progressRecord && !lifecycleBusy ? () => void reconcileJournalRecord(progressRecord) : undefined}
           />
           {view === "home" && <HomeView onNew={() => setView("new")} onOpen={openCase} />}
-          {view === "new" && <NewMatchView wallet={wallet} contractAddress={contractAddress} busy={writeBusy} signingAvailable={signingAvailable} onCreate={createMatch} />}
-          {view === "match" && loaded && <MatchView loaded={loaded} wallet={wallet} busy={writeBusy || reconcileBusy !== null} signingAvailable={signingAvailable} chainNow={chainNow} onRefresh={() => void refreshCase(loaded.record.id)} onAction={runCaseAction} />}
+          {view === "new" && <NewMatchView wallet={wallet} contractAddress={contractAddress} busy={lifecycleBusy} signingAvailable={signingAvailable} onCreate={createMatch} />}
+          {view === "match" && loaded && <MatchView loaded={loaded} wallet={wallet} busy={lifecycleBusy} signingAvailable={signingAvailable} chainNow={chainNow} onRefresh={() => void refreshCase(loaded.record.id)} onAction={runCaseAction} />}
           {view === "match" && !loaded && <HomeView onNew={() => setView("new")} onOpen={openCase} />}
-          <JournalPanel records={journalRecords} unknown={journalUnknown} error={journalError} signingAvailable={signingAvailable} busyReservation={reconcileBusy} onRefresh={() => void refreshJournal()} onReconcile={(record) => void reconcileJournalRecord(record)} />
+          <JournalPanel records={journalRecords} unknown={journalUnknown} error={journalError} signingAvailable={signingAvailable} busy={lifecycleBusy} busyReservation={reconcileBusy} onRefresh={() => void refreshJournal()} onReconcile={(record) => void reconcileJournalRecord(record)} />
         </div>
         <footer className="site-footer"><span>Committed Answer Match</span><span>Studionet functional build</span><a href="https://docs.genlayer.com" target="_blank" rel="noreferrer">GenLayer docs <ExternalLink size={14} /></a></footer>
       </div>

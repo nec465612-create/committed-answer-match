@@ -88,7 +88,13 @@ test("renders every valid journal record and preserves malformed raw export", as
   });
   await page.goto("/");
   await page.getByRole("button", { name: "Journal", exact: true }).click();
-  await expect(page.locator(".journal-row")).toHaveCount(6);
+  await expect(page.locator(".journal-row")).toHaveCount(4);
+  await expect(page.getByRole("button", { name: "Previous journal page" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Next journal page" })).toBeEnabled();
+  await page.getByRole("button", { name: "Next journal page" }).click();
+  await expect(page.locator(".journal-row")).toHaveCount(2);
+  await expect(page.getByText("Page 2 of 2")).toBeVisible();
+  await expect(page.getByText("Unreadable journal entry")).toBeVisible();
   await expect(page.getByText(/Unreadable journal entries are preserved/i)).toBeVisible();
   await expect(page.getByRole("button", { name: "Export" })).toBeEnabled();
 });

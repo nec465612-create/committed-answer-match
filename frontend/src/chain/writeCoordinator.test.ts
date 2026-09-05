@@ -168,8 +168,65 @@ describe("executeWrite", () => {
     expect(outcome.status).toBe("RECONCILE");
     expect(journal.signingAvailable).toBe(false);
     expect((await journal.list())[0]).toMatchObject({ status: "RECONCILE", tx_hash: "0x" + "c".repeat(64) });
+    storage.failWrites = false;
     await expect(executeWrite(plan({ submit: async () => { submitCalls += 1; return "0x" + "d".repeat(64); } }), { journal, sleep: async () => undefined })).rejects.toMatchObject({ kind: "lock" });
     expect(submitCalls).toBe(1);
+  });
+
+  it("persists a later terminal classification after an unknown finalized-error pass", async () => {
+    for (const classification of ["PRESENT", "COMPETING"] as const) {
+      const storage = new MemoryStorage();
+      const journal = new DurableJournal(storage, new ImmediateLocks());
+      const unknownJson = canonicalJson({ classification: "UNKNOWN", reason: "invalid_post_state" });
+      const terminalJson = canonicalJson({ classification, revision: "4" });
+      const first = await executeWrite(
+        plan({
+          pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_ERROR" }),
+          verifyFinalizedError: async () => ({ classification: "UNKNOWN", detailJson: unknownJson }),
+        }),
+        { journal, sleep: async () => undefined },
+      );
+      expect(first.status).toBe("RECONCILE");
+      const retained = (await journal.list())[0];
+      const second = await reconcileWrite({
+        journal: retained,
+        pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_ERROR" }),
+        verifyPost: async () => false,
+        verifyPre: async () => true,
+        verifyFinalizedError: async () => ({ classification, detailJson: terminalJson }),
+      }, { journal });
+      expect(second.status).toBe("FINALIZED_ERROR");
+
+      const reloaded = new DurableJournal(storage, new ImmediateLocks());
+      expect((await reloaded.list())[0]).toMatchObject({ status: "FINALIZED_ERROR", resolution_json: terminalJson });
+    }
+  });
+
+  it("rejects a concurrent write or reconciliation lifecycle before a second poller starts", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const hash = "0x" + "e".repeat(64);
+    let releaseSubmit: ((value: string) => void) | undefined;
+    let markSubmitStarted: (() => void) | undefined;
+    const submitStarted = new Promise<void>((resolve) => { markSubmitStarted = resolve; });
+    const first = executeWrite(
+      plan({
+        submit: async () => {
+          markSubmitStarted?.();
+          return new Promise<string>((resolve) => { releaseSubmit = resolve; });
+        },
+      }),
+      { journal, sleep: async () => undefined },
+    );
+    await submitStarted;
+    const retained = (await journal.list())[0];
+    await expect(reconcileWrite({
+      journal: retained,
+      pollFinalized: async () => ({ statusName: "FINALIZED", txExecutionResultName: "FINISHED_WITH_RETURN" }),
+      verifyPost: async () => true,
+      verifyPre: async () => false,
+    }, { journal })).rejects.toThrow(/another transaction lifecycle/i);
+    releaseSubmit?.(hash);
+    await expect(first).resolves.toMatchObject({ status: "VERIFIED" });
   });
 
   it("latches signing off when the lock request is rejected", async () => {
