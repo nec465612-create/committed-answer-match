@@ -22,6 +22,7 @@ describe("connectWallet", () => {
     const provider = {
       request: vi.fn(async ({ method }: { method: string }) => {
         if (method === "eth_requestAccounts") return [ACCOUNT];
+        if (method === "eth_accounts") return [ACCOUNT];
         if (method === "eth_chainId") return "0xf22f";
         return [];
       }),
@@ -75,5 +76,31 @@ describe("connectWallet", () => {
       "eth_chainId",
     ]);
     connected.cleanup();
+  });
+
+  it("does not commit a session when the wallet does not confirm an active account", async () => {
+    const provider = {
+      request: vi.fn(async ({ method }: { method: string }) => {
+        if (method === "eth_requestAccounts") return [ACCOUNT];
+        if (method === "eth_accounts") return [];
+        return "0xf22f";
+      }),
+    };
+
+    await expect(connectWallet(candidate(provider), { reload: vi.fn() })).rejects.toThrow("did not confirm an active account");
+    expect(provider.request).toHaveBeenCalledTimes(2);
+  });
+
+  it("does not commit a session when the confirmed account differs from the requested account", async () => {
+    const provider = {
+      request: vi.fn(async ({ method }: { method: string }) => {
+        if (method === "eth_requestAccounts") return [ACCOUNT];
+        if (method === "eth_accounts") return ["0x2222222222222222222222222222222222222222"];
+        return "0xf22f";
+      }),
+    };
+
+    await expect(connectWallet(candidate(provider), { reload: vi.fn() })).rejects.toThrow("account changed");
+    expect(provider.request).toHaveBeenCalledTimes(2);
   });
 });

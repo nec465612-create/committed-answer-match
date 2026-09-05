@@ -104,6 +104,7 @@ export function createRpcBudgetGuard(rows: readonly RpcBudgetRow[]) {
         evidence.push({ rowId: input.rowId, key: input.key, source: "network", attempt, at: Date.now() });
         try {
           const value = await input.call();
+          input.signal.throwIfAborted();
           if (budget.cacheTtlMs > 0) cache.set(scopedKey, { expiresAt: Date.now() + budget.cacheTtlMs, value });
           return value;
         } catch (cause) {

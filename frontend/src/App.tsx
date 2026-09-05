@@ -57,7 +57,7 @@ import {
   type WalletId,
 } from "./wallet/providers";
 import { type ConnectedWallet } from "./wallet/connection";
-import { createWalletStore, emptyWalletSessionState, selectWalletView, type WalletSessionState } from "./wallet/store";
+import { createWalletStore, emptyWalletSessionState, selectWalletView, type WalletSessionState, type WalletSessionStore } from "./wallet/store";
 import type { CalldataEncodable } from "genlayer-js/types";
 
 const PUBLIC_WARNING = "All submitted text will be public and permanent. Do not include private information, credentials or personal records.";
@@ -767,9 +767,9 @@ function JournalPanel({ records, unknown, error, signingAvailable, busy, busyRes
 }
 
 export default function App() {
-  const walletStore = useMemo(() => (typeof window === "undefined" ? null : createWalletStore(browserDiscoveryHost(), makeWriteAdapter)), []);
   const journal = useMemo<DurableJournal>(() => createBrowserJournal(), []);
-  const [walletState, setWalletState] = useState<WalletSessionState>(() => walletStore?.getWalletState() ?? emptyWalletSessionState());
+  const [walletStore, setWalletStore] = useState<WalletSessionStore | null>(null);
+  const [walletState, setWalletState] = useState<WalletSessionState>(emptyWalletSessionState);
   const walletView = selectWalletView(walletState);
   const wallets = walletView.providerOptions;
   const wallet = walletState.wallet;
@@ -790,6 +790,8 @@ export default function App() {
   const [transactionProgress, setTransactionProgress] = useState<WriteProgress>(INITIAL_WRITE_PROGRESS);
   const [transactionReservation, setTransactionReservation] = useState<string | null>(null);
   const lifecycleActiveRef = useRef(false);
+  const activeOperationControllerRef = useRef<AbortController | null>(null);
+  const previousSessionRef = useRef<{ provider: object | null; account: string | null; chainId: string | null } | null>(null);
   function beginLifecycle(): boolean {
     if (lifecycleActiveRef.current) return false;
     lifecycleActiveRef.current = true;
@@ -804,9 +806,33 @@ export default function App() {
   }, []);
   const signingAvailable = journalReady && journal.signingAvailable && journalUnknown.length === 0;
 
-  useEffect(() => walletStore?.subscribeWalletState(() => setWalletState(walletStore.getWalletState())), [walletStore]);
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const store = createWalletStore(browserDiscoveryHost(), makeWriteAdapter);
+    const unsubscribe = store.subscribeWalletState(() => setWalletState(store.getWalletState()));
+    setWalletStore(store);
+    setWalletState(store.getWalletState());
+    return () => {
+      unsubscribe();
+      store.destroy();
+    };
+  }, []);
 
-  useEffect(() => () => walletStore?.destroy(), [walletStore]);
+  useEffect(() => {
+    const current = {
+      provider: walletState.selectedProvider?.provider ?? null,
+      account: walletState.account,
+      chainId: walletState.chainId,
+    };
+    const previous = previousSessionRef.current;
+    if (previous && (previous.provider !== current.provider || previous.account !== current.account || previous.chainId !== current.chainId)) {
+      activeOperationControllerRef.current?.abort();
+    }
+    if (walletState.phase !== "CONNECTED") activeOperationControllerRef.current?.abort();
+    previousSessionRef.current = current;
+  }, [walletState.phase, walletState.selectedProvider, walletState.account, walletState.chainId]);
+
+  useEffect(() => () => activeOperationControllerRef.current?.abort(), []);
 
   useEffect(() => {
     if (walletState.phase === "WRONG_CHAIN" && walletState.error) {
@@ -899,6 +925,8 @@ export default function App() {
     setWriteBusy(true);
     setTransactionProgress({ phase: "IDLE" });
     setTransactionReservation(null);
+    const operationController = new AbortController();
+    activeOperationControllerRef.current = operationController;
     setNotice({ tone: "info", text: "The match is being submitted. Approve only the wallet request you initiated." });
     try {
       const adapter = walletState.writeClient;
@@ -920,16 +948,16 @@ export default function App() {
           preStateJson: "",
         },
         submit: () => adapter.submit("create_match", draft.args),
-        pollFinalized: async (hash, attempt) => {
-          const receipt = await adapter.pollFinalized(hash, attempt);
+        pollFinalized: async (hash, attempt, signal) => {
+          const receipt = await adapter.pollFinalized(hash, attempt, signal);
           if (receipt?.returnedCaseId) returnedCaseId = receipt.returnedCaseId;
           return receipt;
         },
-        verifyPost: async () => {
+        verifyPost: async (signal) => {
           invalidateReadRequests();
-          const id = returnedCaseId ?? await readIdByNonce(wallet.account, draft.nonce);
+          const id = returnedCaseId ?? await readIdByNonce(wallet.account, draft.nonce, contractAddress, signal);
           if (id === "0") return false;
-          const raw = await readVersion(id, "1");
+          const raw = await readVersion(id, "1", contractAddress, signal);
           const record = raw ? parseRecord(raw) : null;
           const valid = Boolean(record && matchesCreatePostcondition({
             record,
@@ -944,11 +972,11 @@ export default function App() {
           if (valid && raw && record) created.value = { raw, record };
           return valid;
         },
-        verifyFinalizedError: async () => {
+        verifyFinalizedError: async (signal) => {
           invalidateReadRequests();
-          const id = returnedCaseId ?? await readIdByNonce(wallet.account, draft.nonce);
+          const id = returnedCaseId ?? await readIdByNonce(wallet.account, draft.nonce, contractAddress, signal);
           if (id === "0") return resolutionEvidence("UNCHANGED", { nonce: draft.nonce });
-          const raw = await readVersion(id, "1");
+          const raw = await readVersion(id, "1", contractAddress, signal);
           const record = raw ? parseRecord(raw) : null;
           if (!raw || !record) return resolutionEvidence("UNKNOWN", { case_id: id, reason: "missing_or_invalid_create_record" });
           const valid = matchesCreatePostcondition({
@@ -965,12 +993,12 @@ export default function App() {
             ? resolutionEvidence("PRESENT", { case_id: id, observed_revision: record.revision, observed_operation: record.last_operation })
             : resolutionEvidence("COMPETING", { case_id: id, observed_revision: record.revision, observed_operation: record.last_operation });
         },
-        verifyPre: async () => {
+        verifyPre: async (signal) => {
           invalidateReadRequests();
-          return (await readIdByNonce(wallet.account, draft.nonce)) === "0";
+          return (await readIdByNonce(wallet.account, draft.nonce, contractAddress, signal)) === "0";
         },
         progress: setTransactionProgress,
-      }, { journal });
+      }, { journal, signal: operationController.signal });
       invalidateReadRequests();
       await refreshJournal();
       setTransactionReservation(outcome.journal?.reservation ?? null);
@@ -991,6 +1019,7 @@ export default function App() {
     } finally {
       setWriteBusy(false);
       endLifecycle();
+      if (activeOperationControllerRef.current === operationController) activeOperationControllerRef.current = null;
     }
   }
 
@@ -1010,6 +1039,8 @@ export default function App() {
     setWriteBusy(true);
     setTransactionProgress({ phase: "IDLE" });
     setTransactionReservation(null);
+    const operationController = new AbortController();
+    activeOperationControllerRef.current = operationController;
     setNotice({ tone: "info", text: "Preparing the selected case action. Approve only the wallet request you initiated." });
     try {
       const adapter = walletState.writeClient;
@@ -1033,9 +1064,9 @@ export default function App() {
         },
         submit: () => adapter.submit(action.method, action.args),
         pollFinalized: adapter.pollFinalized,
-        verifyPost: async () => {
+        verifyPost: async (signal) => {
           invalidateReadRequests();
-          const raw = await readVersion(loaded.record.id, postRevision);
+          const raw = await readVersion(loaded.record.id, postRevision, contractAddress, signal);
           const record = raw ? parseRecord(raw) : null;
           const valid = Boolean(record && matchesActionPostcondition({
             before: loaded.record,
@@ -1048,9 +1079,9 @@ export default function App() {
           if (valid && raw && record) verified = { raw, record };
           return valid;
         },
-        verifyFinalizedError: async () => {
+        verifyFinalizedError: async (signal) => {
           invalidateReadRequests();
-          const raw = await readVersion(loaded.record.id, postRevision);
+          const raw = await readVersion(loaded.record.id, postRevision, contractAddress, signal);
           if (!raw) return resolutionEvidence("UNCHANGED", { case_id: loaded.record.id, preserved_revision: preRevision });
           const record = parseRecord(raw);
           if (!record) return resolutionEvidence("UNKNOWN", { case_id: loaded.record.id, reason: "invalid_competing_state" });
@@ -1066,13 +1097,13 @@ export default function App() {
             ? resolutionEvidence("PRESENT", { case_id: loaded.record.id, observed_revision: record.revision, observed_operation: record.last_operation })
             : resolutionEvidence("COMPETING", { case_id: loaded.record.id, observed_revision: record.revision, observed_operation: record.last_operation });
         },
-        verifyPre: async () => {
+        verifyPre: async (signal) => {
           invalidateReadRequests();
-          const raw = await readVersion(loaded.record.id, preRevision);
+          const raw = await readVersion(loaded.record.id, preRevision, contractAddress, signal);
           return raw !== null && await sha256Hex(raw) === preHash;
         },
         progress: setTransactionProgress,
-      }, { journal });
+      }, { journal, signal: operationController.signal });
       invalidateReadRequests();
       await refreshJournal();
       setTransactionReservation(outcome.journal?.reservation ?? null);
@@ -1091,6 +1122,7 @@ export default function App() {
     } finally {
       setWriteBusy(false);
       endLifecycle();
+      if (activeOperationControllerRef.current === operationController) activeOperationControllerRef.current = null;
     }
   }
 
@@ -1126,6 +1158,8 @@ export default function App() {
     }
     setReconcileBusy(record.reservation);
     setTransactionReservation(record.reservation);
+    const operationController = new AbortController();
+    activeOperationControllerRef.current = operationController;
     setTransactionProgress({
       phase: "RECONCILIATION_REQUIRED",
       ...(record.tx_hash !== "" ? { hash: record.tx_hash } : {}),
@@ -1137,7 +1171,7 @@ export default function App() {
     let before: CaseRecord | null = null;
     let beforeResolved = false;
 
-    async function resolveBefore(): Promise<CaseRecord | null> {
+    async function resolveBefore(signal?: AbortSignal): Promise<CaseRecord | null> {
       if (resolvedIntent.kind === "create") return null;
       if (beforeResolved) return before;
       beforeResolved = true;
@@ -1150,7 +1184,7 @@ export default function App() {
           }
         }
         invalidateReadRequests();
-        const raw = await readVersion(resolvedIntent.caseId, resolvedIntent.preRevision, record.contract);
+        const raw = await readVersion(resolvedIntent.caseId, resolvedIntent.preRevision, record.contract, signal);
         if (!raw || await sha256Hex(raw) !== record.pre_hash) return null;
         const candidate = parseRecord(raw);
         if (!candidate || candidate.id !== resolvedIntent.caseId || candidate.revision !== resolvedIntent.preRevision) return null;
@@ -1167,13 +1201,13 @@ export default function App() {
       return nonce === resolvedIntent.nonce ? { nonce, opponent, clue, commitment } : null;
     }
 
-    async function lookupCreate(): Promise<ResolutionEvidence> {
+    async function lookupCreate(signal?: AbortSignal): Promise<ResolutionEvidence> {
       const create = createArgs();
       if (!create) return resolutionEvidence("UNKNOWN", { reason: "invalid_create_arguments" });
       invalidateReadRequests();
-      const id = await readIdByNonce(record.account, create.nonce, record.contract);
+      const id = await readIdByNonce(record.account, create.nonce, record.contract, signal);
       if (id === "0") return resolutionEvidence("ABSENT", { nonce: create.nonce });
-      const raw = await readVersion(id, "1", record.contract);
+      const raw = await readVersion(id, "1", record.contract, signal);
       const next = raw ? parseRecord(raw) : null;
       if (!raw || !next) return resolutionEvidence("UNKNOWN", { case_id: id, reason: "missing_or_invalid_create_record" });
       const valid = matchesCreatePostcondition({
@@ -1193,12 +1227,12 @@ export default function App() {
       return resolutionEvidence("COMPETING", { case_id: id, observed_revision: next.revision, observed_operation: next.last_operation });
     }
 
-    async function lookupAction(): Promise<ResolutionEvidence> {
+    async function lookupAction(signal?: AbortSignal): Promise<ResolutionEvidence> {
       if (resolvedIntent.kind !== "action") return resolutionEvidence("UNKNOWN", { reason: "invalid_action_context" });
-      const pre = await resolveBefore();
+      const pre = await resolveBefore(signal);
       if (!pre) return resolutionEvidence("UNKNOWN", { reason: "pre_state_unavailable" });
       invalidateReadRequests();
-      const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract);
+      const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract, signal);
       if (!raw) return resolutionEvidence("ABSENT", { case_id: resolvedIntent.caseId, expected_revision: nextRevision(resolvedIntent.preRevision) });
       const next = parseRecord(raw);
       if (!next) return resolutionEvidence("UNKNOWN", { case_id: resolvedIntent.caseId, reason: "invalid_post_state" });
@@ -1218,12 +1252,12 @@ export default function App() {
       return resolutionEvidence("COMPETING", { case_id: resolvedIntent.caseId, observed_revision: next.revision, observed_operation: next.last_operation });
     }
 
-    async function finalizedErrorEvidence(): Promise<ResolutionEvidence | null> {
-      if (resolvedIntent.kind === "create") return lookupCreate();
-      const pre = await resolveBefore();
+    async function finalizedErrorEvidence(signal?: AbortSignal): Promise<ResolutionEvidence | null> {
+      if (resolvedIntent.kind === "create") return lookupCreate(signal);
+      const pre = await resolveBefore(signal);
       if (!pre) return null;
       invalidateReadRequests();
-      const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract);
+      const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract, signal);
       if (!raw) return resolutionEvidence("UNCHANGED", { case_id: resolvedIntent.caseId, preserved_revision: pre.revision });
       const next = parseRecord(raw);
       if (!next) return resolutionEvidence("UNKNOWN", { case_id: resolvedIntent.caseId, reason: "invalid_competing_state" });
@@ -1243,18 +1277,18 @@ export default function App() {
     try {
       const outcome = await reconcileWrite({
         journal: record,
-        pollFinalized: async (hash, attempt) => {
-          const receipt = await pollFinalized(hash, attempt);
+        pollFinalized: async (hash, attempt, signal) => {
+          const receipt = await pollFinalized(hash, attempt, signal);
           if (receipt?.returnedCaseId) returnedCaseId = receipt.returnedCaseId;
           return receipt;
         },
-        verifyPost: async () => {
+        verifyPost: async (signal) => {
           invalidateReadRequests();
           if (resolvedIntent.kind === "create") {
             const create = createArgs();
-            const id = returnedCaseId ?? (create ? await readIdByNonce(record.account, create.nonce, record.contract) : "0");
+            const id = returnedCaseId ?? (create ? await readIdByNonce(record.account, create.nonce, record.contract, signal) : "0");
             if (!create || id === "0") return false;
-            const raw = await readVersion(id, "1", record.contract);
+            const raw = await readVersion(id, "1", record.contract, signal);
             const next = raw ? parseRecord(raw) : null;
             if (!next) return false;
             const valid = matchesCreatePostcondition({
@@ -1270,9 +1304,9 @@ export default function App() {
             if (valid && raw) verified = { raw, record: next };
             return valid;
           }
-          const pre = await resolveBefore();
+          const pre = await resolveBefore(signal);
           if (!pre) return false;
-          const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract);
+          const raw = await readVersion(resolvedIntent.caseId, nextRevision(resolvedIntent.preRevision), record.contract, signal);
           const next = raw ? parseRecord(raw) : null;
           if (!next) return false;
           const valid = matchesJournalActionPostcondition({
@@ -1289,13 +1323,13 @@ export default function App() {
         },
         verifyFinalizedError: finalizedErrorEvidence,
         lookupNoHash: resolvedIntent.kind === "create" ? lookupCreate : lookupAction,
-        verifyPre: async () => {
+        verifyPre: async (signal) => {
           invalidateReadRequests();
-          if (resolvedIntent.kind === "create") return (await readIdByNonce(record.account, resolvedIntent.nonce, record.contract)) === "0";
-          return (await resolveBefore()) !== null;
+          if (resolvedIntent.kind === "create") return (await readIdByNonce(record.account, resolvedIntent.nonce, record.contract, signal)) === "0";
+          return (await resolveBefore(signal)) !== null;
         },
         progress: setTransactionProgress,
-      }, { journal });
+      }, { journal, signal: operationController.signal });
       invalidateReadRequests();
       await refreshJournal();
       const verifiedRead = verified;
@@ -1323,6 +1357,7 @@ export default function App() {
     } finally {
       setReconcileBusy(null);
       endLifecycle();
+      if (activeOperationControllerRef.current === operationController) activeOperationControllerRef.current = null;
     }
   }
 

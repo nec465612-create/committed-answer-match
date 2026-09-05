@@ -142,3 +142,21 @@ LEDGER: 22 retained replacement logical actions/transactions, 22 terminal receip
 
 The full per-row ledger, hashes, variance and the distinction between logical
 actions and physical RPC requests are locked in `docs/RPC-BUDGET.md`.
+
+## Post-deploy frontend repair delta
+
+The reviewer then checked exact frontend package HEAD `86b7bece50f444ce11888bfaeb7bc67d5910f915` and returned
+`ANONYMOUS REVIEW CHANGES REQUIRED - POST_DEPLOY_TEST` with three P1 findings:
+the wallet store was destroyed and reused across React StrictMode effect replay,
+an empty `eth_accounts` response could still commit a connected session, and
+write/reconcile polling and readback had no operation-scoped cancellation.
+
+The repair keeps the deployed contract and all Studio evidence unchanged. It
+creates and tears down the wallet store in one mount-owned effect, requires a
+non-empty and matching `eth_accounts` confirmation, and propagates one
+`AbortController` through coordinator polling, status/receipt reads and
+authoritative readback. It also adds the rendered late-provider, account
+confirmation and retained-hash/no-next-poll regressions. Local contract tests,
+lint, validation, frontend unit tests, build, Playwright and the PostDeployTest
+project audit pass; the same reviewer must recheck this exact repair revision
+before the checkpoint can be treated as current approval.

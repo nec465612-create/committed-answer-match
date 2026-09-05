@@ -108,8 +108,15 @@ export async function connectWallet(
   if (!Array.isArray(accounts) || accounts.length === 0) {
     throw new Error("No wallet account was selected.");
   }
+  const requestedAccount = asAddress(accounts[0]);
   const activeAccounts = await candidate.provider.request({ method: "eth_accounts" });
-  const account = asAddress(Array.isArray(activeAccounts) && activeAccounts.length > 0 ? activeAccounts[0] : accounts[0]);
+  if (!Array.isArray(activeAccounts) || activeAccounts.length === 0) {
+    throw new Error("The wallet did not confirm an active account.");
+  }
+  const account = asAddress(activeAccounts[0]);
+  if (account !== requestedAccount) {
+    throw new Error("The wallet account changed before connection completed.");
+  }
   const chainId = await switchToChain(candidate.provider, options.chain ?? studionet);
   return { ...candidate, account, chainId, cleanup: bindReload(candidate.provider, options.reload) };
 }

@@ -286,6 +286,35 @@ describe("executeWrite", () => {
     expect((await journal.list())[0].status).toBe("VERIFIED");
   });
 
+  it("retains the submitted hash when session cancellation aborts before the next poll", async () => {
+    const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
+    const controller = new AbortController();
+    const hash = "0x" + "f".repeat(64);
+    let submitCalls = 0;
+    let polls = 0;
+    let markSubmitStarted: (() => void) | undefined;
+    const submitStarted = new Promise<void>((resolve) => { markSubmitStarted = resolve; });
+    let releaseSleep: (() => void) | undefined;
+    const blockedSleep = new Promise<void>((resolve) => { releaseSleep = resolve; });
+    const pending = executeWrite(
+      plan({
+        submit: async () => { submitCalls += 1; markSubmitStarted?.(); return hash; },
+        pollFinalized: async () => { polls += 1; return null; },
+      }),
+      { journal, signal: controller.signal, sleep: async () => blockedSleep },
+    );
+
+    await submitStarted;
+    controller.abort();
+    const outcome = await pending;
+    releaseSleep?.();
+
+    expect(outcome.status).toBe("RECONCILE");
+    expect(outcome.journal?.tx_hash).toBe(hash);
+    expect(submitCalls).toBe(1);
+    expect(polls).toBe(0);
+  });
+
   it("looks up a hashless reservation without polling or submitting", async () => {
     const journal = new DurableJournal(new MemoryStorage(), new ImmediateLocks());
     const original = await journal.createSigning(journalInput);

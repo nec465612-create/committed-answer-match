@@ -9,20 +9,20 @@ import {
 export interface WritePlan {
   journal: SigningInput;
   submit: () => Promise<string>;
-  pollFinalized: (hash: string, attempt: number) => Promise<ContractReceipt | null>;
-  verifyPost: () => Promise<boolean>;
-  verifyPre: () => Promise<boolean>;
-  verifyFinalizedError?: () => Promise<ResolutionEvidence | null>;
+  pollFinalized: (hash: string, attempt: number, signal?: AbortSignal) => Promise<ContractReceipt | null>;
+  verifyPost: (signal?: AbortSignal) => Promise<boolean>;
+  verifyPre: (signal?: AbortSignal) => Promise<boolean>;
+  verifyFinalizedError?: (signal?: AbortSignal) => Promise<ResolutionEvidence | null>;
   progress?: (event: WriteProgress) => void;
 }
 
 export interface ReconcilePlan {
   journal: JournalRecord;
-  pollFinalized: (hash: string, attempt: number) => Promise<ContractReceipt | null>;
-  verifyPost: () => Promise<boolean>;
-  verifyPre: () => Promise<boolean>;
-  verifyFinalizedError?: () => Promise<ResolutionEvidence | null>;
-  lookupNoHash?: () => Promise<ResolutionEvidence | null>;
+  pollFinalized: (hash: string, attempt: number, signal?: AbortSignal) => Promise<ContractReceipt | null>;
+  verifyPost: (signal?: AbortSignal) => Promise<boolean>;
+  verifyPre: (signal?: AbortSignal) => Promise<boolean>;
+  verifyFinalizedError?: (signal?: AbortSignal) => Promise<ResolutionEvidence | null>;
+  lookupNoHash?: (signal?: AbortSignal) => Promise<ResolutionEvidence | null>;
   progress?: (event: WriteProgress) => void;
 }
 
@@ -87,18 +87,22 @@ function normalizeHash(value: unknown): string {
   return value.toLowerCase();
 }
 
-async function safeCheck(check: () => Promise<boolean>): Promise<boolean> {
+async function safeCheck(check: (signal?: AbortSignal) => Promise<boolean>, signal?: AbortSignal): Promise<boolean> {
   try {
-    return await check();
+    if (signal?.aborted) return false;
+    const result = await check(signal);
+    return !signal?.aborted && result;
   } catch {
     return false;
   }
 }
 
-async function safeResolution(check: (() => Promise<ResolutionEvidence | null>) | undefined): Promise<ResolutionEvidence | null> {
+async function safeResolution(check: ((signal?: AbortSignal) => Promise<ResolutionEvidence | null>) | undefined, signal?: AbortSignal): Promise<ResolutionEvidence | null> {
   if (!check) return null;
   try {
-    return await check();
+    if (signal?.aborted) return null;
+    const result = await check(signal);
+    return signal?.aborted ? null : result;
   } catch {
     return null;
   }
@@ -266,6 +270,7 @@ async function executeWriteInternal(plan: WritePlan, options: CoordinatorOptions
 
   try {
     emitProgress(plan.progress, { phase: "WAITING_FOR_WALLET" });
+    if (options.signal?.aborted) throw abortError();
     transactionHash = normalizeHash(await plan.submit());
     emitProgress(plan.progress, { phase: "SUBMITTED", hash: transactionHash });
     try {
@@ -309,7 +314,7 @@ async function executeWriteInternal(plan: WritePlan, options: CoordinatorOptions
       return { status: "RECONCILE", journal: retained };
     }
     try {
-      const candidate = await plan.pollFinalized(transactionHash, index + 1);
+      const candidate = await plan.pollFinalized(transactionHash, index + 1, options.signal);
       if (candidate && candidate.statusName === "FINALIZED") {
         receipt = candidate;
         break;
@@ -328,7 +333,7 @@ async function executeWriteInternal(plan: WritePlan, options: CoordinatorOptions
   emitProgress(plan.progress, { phase: "VERIFYING_EXECUTION", hash: transactionHash });
   if (isSuccessfulReceipt(receipt)) {
     emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: transactionHash });
-    if (await safeCheck(plan.verifyPost)) {
+    if (await safeCheck(plan.verifyPost, options.signal)) {
       try {
         await update("VERIFIED");
         emitProgress(plan.progress, { phase: "SUCCESS", hash: transactionHash });
@@ -344,7 +349,7 @@ async function executeWriteInternal(plan: WritePlan, options: CoordinatorOptions
 
   if (receipt.txExecutionResultName === "FINISHED_WITH_ERROR") {
     emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: transactionHash });
-    const evidence = await safeResolution(plan.verifyFinalizedError);
+    const evidence = await safeResolution(plan.verifyFinalizedError, options.signal);
     if (evidence && isTerminalResolution(evidence)) {
       try {
         await update("FINALIZED_ERROR", { resolutionJson: evidence.detailJson });
@@ -359,7 +364,7 @@ async function executeWriteInternal(plan: WritePlan, options: CoordinatorOptions
       const retained = await retainReconciliation("The finalized result is still ambiguous; continue verification of the existing transaction.", evidence.detailJson);
       return { status: "RECONCILE", journal: retained };
     }
-    if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre)) {
+    if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre, options.signal)) {
       try {
         await update("FINALIZED_ERROR", { resolutionJson: '{"classification":"UNCHANGED"}' });
         emitProgress(plan.progress, { phase: "FAILED", hash: transactionHash, message: "The finalized transaction did not complete successfully and the authoritative pre-state was unchanged." });
@@ -408,7 +413,7 @@ async function reconcileWriteInternal(plan: ReconcilePlan, options: CoordinatorO
 
   if (plan.journal.tx_hash === "") {
     emitProgress(plan.progress, { phase: "RECONCILIATION_REQUIRED", message: "No transaction hash is available; no replacement will be sent." });
-    const evidence = await safeResolution(plan.lookupNoHash);
+    const evidence = await safeResolution(plan.lookupNoHash, options.signal);
     if (!evidence) return { status: "RECONCILE", journal: current };
     const journal = await retainReconciliation("The hashless operation remains preserved for reconciliation.", evidence.detailJson);
     return { status: "RECONCILE", journal };
@@ -417,7 +422,7 @@ async function reconcileWriteInternal(plan: ReconcilePlan, options: CoordinatorO
   emitProgress(plan.progress, { phase: "WAITING_FOR_FINALITY", hash: current.tx_hash });
   try {
     await waitUntilVisible(options.signal);
-    receipt = await plan.pollFinalized(current.tx_hash, 1);
+    receipt = await plan.pollFinalized(current.tx_hash, 1, options.signal);
   } catch (error) {
     const journal = await retainReconciliation(error instanceof Error ? error.message : "Finality polling was interrupted.");
     return { status: "RECONCILE", journal };
@@ -430,7 +435,7 @@ async function reconcileWriteInternal(plan: ReconcilePlan, options: CoordinatorO
   emitProgress(plan.progress, { phase: "VERIFYING_EXECUTION", hash: current.tx_hash });
   if (isSuccessfulReceipt(receipt)) {
     emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: current.tx_hash });
-    if (await safeCheck(plan.verifyPost)) {
+    if (await safeCheck(plan.verifyPost, options.signal)) {
       try {
         current = await updateStatus(options.journal, current, "VERIFIED");
         emitProgress(plan.progress, { phase: "SUCCESS", hash: current.tx_hash });
@@ -442,7 +447,7 @@ async function reconcileWriteInternal(plan: ReconcilePlan, options: CoordinatorO
     }
   } else if (receipt.txExecutionResultName === "FINISHED_WITH_ERROR") {
     emitProgress(plan.progress, { phase: "VERIFYING_READBACK", hash: current.tx_hash });
-    const evidence = await safeResolution(plan.verifyFinalizedError);
+    const evidence = await safeResolution(plan.verifyFinalizedError, options.signal);
     if (evidence && isTerminalResolution(evidence)) {
       try {
         current = await updateStatus(options.journal, current, "FINALIZED_ERROR", evidence.detailJson);
@@ -457,7 +462,7 @@ async function reconcileWriteInternal(plan: ReconcilePlan, options: CoordinatorO
       const journal = await retainReconciliation("The finalized result is still ambiguous; continue verification of the existing transaction.", evidence.detailJson);
       return { status: "RECONCILE", journal };
     }
-    if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre)) {
+    if (!plan.verifyFinalizedError && await safeCheck(plan.verifyPre, options.signal)) {
       try {
         current = await updateStatus(options.journal, current, "FINALIZED_ERROR", '{"classification":"UNCHANGED"}');
         emitProgress(plan.progress, { phase: "FAILED", hash: current.tx_hash, message: "The finalized transaction did not complete successfully and the authoritative pre-state was unchanged." });

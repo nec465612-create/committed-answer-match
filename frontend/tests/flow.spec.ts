@@ -7,6 +7,7 @@ test("opens a real provider picker without requesting an account on page load", 
       request: async ({ method }: { method: string }) => {
         calls.push(method);
         if (method === "eth_requestAccounts") return ["0x1111111111111111111111111111111111111111"];
+        if (method === "eth_accounts") return ["0x1111111111111111111111111111111111111111"];
         if (method === "eth_chainId") return "0xf22f";
         return [];
       },
@@ -39,6 +40,34 @@ test("opens a real provider picker without requesting an account on page load", 
     "eth_accounts",
     "eth_chainId",
   ]);
+});
+
+test("accepts a wallet provider announced after the app has mounted", async ({ page }) => {
+  await page.addInitScript(() => {
+    const provider = {
+      request: async ({ method }: { method: string }) => {
+        if (method === "eth_requestAccounts") return ["0x1111111111111111111111111111111111111111"];
+        if (method === "eth_accounts") return ["0x1111111111111111111111111111111111111111"];
+        if (method === "eth_chainId") return "0xf22f";
+        return [];
+      },
+    };
+    (window as Window & { __announceLate?: () => void }).__announceLate = () => {
+      window.dispatchEvent(new CustomEvent("eip6963:announceProvider", {
+        detail: {
+          info: { uuid: "late-metamask", name: "MetaMask", icon: "data:", rdns: "io.metamask" },
+          provider,
+        },
+      }));
+    };
+  });
+
+  await page.goto("/");
+  await page.getByRole("button", { name: /connect wallet/i }).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toContainText("No supported wallet was detected yet.");
+  await page.evaluate(() => (window as Window & { __announceLate?: () => void }).__announceLate?.());
+  await expect(dialog.locator('[data-testid="wallet-option-metamask"]')).toHaveCount(1);
 });
 
 test("keeps the journal lock failure visible instead of attempting a write", async ({ page }) => {

@@ -12,8 +12,8 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `STUDIO_MATRIX_STATUS: COMPLETE — OBSERVABLE_ACTION_LEDGER`
 - `FRONTEND_MATRIX_STATUS: COMPLETE — exact-release measurement remains a later final gate`
 - `STUDIO_EVIDENCE_STATUS: COMPLETE — replacement S00–S08 logical evidence plus retrospective observable action ledger; no physical-count claim`
-- `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST`
-- `POST_DEPLOY_REVIEW_RESIDUAL: NONE — PD-001 and PD-005 closed under the current legacy measurement route`
+- `POST_DEPLOY_REVIEW_VERDICT: ANONYMOUS REVIEW RECHECK REQUESTED - POST_DEPLOY_TEST`
+- `POST_DEPLOY_REVIEW_RESIDUAL: P1 frontend repair recheck pending — PD-006 StrictMode store lifecycle, PD-007 active-account confirmation and PD-008 cancellation propagation`
 - `FRONTEND_EVIDENCE_STATUS: PLAN_AND_MATRIX_READY — no exact-release measurement claimed; physical release measurement and wallet-signed E2E are later POST_GITHUB_VERCEL_FINAL gates`
 
 ```yaml
@@ -23,7 +23,7 @@ STUDIO_SCOPE: APPLICABLE
 FRONTEND_SCOPE: APPLICABLE
 STUDIO_MATRIX_STATUS: COMPLETE
 FRONTEND_MATRIX_STATUS: COMPLETE
-FRONTEND_EVIDENCE_STATUS: INCOMPLETE
+FRONTEND_EVIDENCE_STATUS: INCOMPLETE — local repair gates pass; exact-release measurement remains deferred
 MULTI_CLIENT_JUSTIFICATION: "One shared read client is cached by chain; each selected wallet receives one provider-bound write client because the SDK write client must carry the active account/provider. No component creates clients."
 STUDIO_EVIDENCE_STATUS: COMPLETE
 STUDIO_STATUS_POLL_ATTEMPTS: 42
@@ -231,7 +231,8 @@ and the journal remains the recovery source.
 - The prior `PD-001` report is retained as historical review evidence, but its
   automatic physical-count blocker is answered by the current
   `OBSERVABLE_ACTION_LEDGER` / `RETROSPECTIVE_LEGACY` route. The same anonymous
-  reviewer rechecked exact package HEAD `086cddd663f8762c4b4d15d919344ef1763aced4`
-  and returned `ANONYMOUS REVIEW APPROVED - POST_DEPLOY_TEST`; `PD-001` and
-  `PD-005` are closed. No new transaction or redeployment was used to
-  manufacture telemetry.
+  reviewer approved the prior exact package HEAD
+  `086cddd663f8762c4b4d15d919344ef1763aced4`; that approval remains historical
+  because the frontend repair delta is now awaiting exact-revision recheck.
+  The current delta closes the reported PD-006/PD-007/PD-008 findings locally;
+  no new transaction or redeployment was used.

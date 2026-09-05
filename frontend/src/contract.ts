@@ -61,7 +61,7 @@ export interface ContractReceipt {
 
 export interface ContractWriteAdapter {
   submit(method: WriteMethod, args: CalldataEncodable[]): Promise<string>;
-  pollFinalized(hash: string, attempt?: number): Promise<ContractReceipt | null>;
+  pollFinalized(hash: string, attempt?: number, signal?: AbortSignal): Promise<ContractReceipt | null>;
 }
 
 const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
@@ -304,13 +304,13 @@ function jsonSafe(value: unknown): unknown {
   return value;
 }
 
-async function readValue(functionName: string, args: CalldataEncodable[], contractAddress = requireContractAddress()): Promise<unknown> {
+async function readValue(functionName: string, args: CalldataEncodable[], contractAddress = requireContractAddress(), signal?: AbortSignal): Promise<unknown> {
   const normalizedContract = normalizeAddress(contractAddress);
   const key = canonicalJson([chainIdDecimal(), normalizedContract, functionName, jsonSafe(args)]);
   return dedupeInFlight(inFlightReads, key, () => readRpcBudget.request({
     rowId: "contract-read",
     key,
-    signal: new AbortController().signal,
+    signal: signal ?? new AbortController().signal,
     call: () => readClient.readContract({
       address: normalizedContract as GenLayerAddress,
       functionName,
@@ -326,32 +326,32 @@ export function invalidateReadRequests(): void {
   readRpcBudget.invalidate(() => true);
 }
 
-export async function readCase(caseId: string, contractAddress = requireContractAddress()): Promise<CaseRead> {
-  const raw = await readValue("get_case", [requireId(caseId)], contractAddress);
+export async function readCase(caseId: string, contractAddress = requireContractAddress(), signal?: AbortSignal): Promise<CaseRead> {
+  const raw = await readValue("get_case", [requireId(caseId)], contractAddress, signal);
   return parseCase(raw);
 }
 
-export async function readVersion(caseId: string, revision: string, contractAddress = requireContractAddress()): Promise<string | null> {
-  const raw = await readValue("get_version", [requireId(caseId), requireRevision(revision)], contractAddress);
+export async function readVersion(caseId: string, revision: string, contractAddress = requireContractAddress(), signal?: AbortSignal): Promise<string | null> {
+  const raw = await readValue("get_version", [requireId(caseId), requireRevision(revision)], contractAddress, signal);
   if (raw === "null") return null;
   if (typeof raw !== "string") throw new Error("Invalid history response.");
   return raw;
 }
 
-export async function readIdByNonce(creator: string, nonce: string, contractAddress = requireContractAddress()): Promise<string> {
-  const value = await readValue("get_id_by_nonce", [normalizeAddress(creator) as GenLayerAddress, requireNonce(nonce)], contractAddress);
+export async function readIdByNonce(creator: string, nonce: string, contractAddress = requireContractAddress(), signal?: AbortSignal): Promise<string> {
+  const value = await readValue("get_id_by_nonce", [normalizeAddress(creator) as GenLayerAddress, requireNonce(nonce)], contractAddress, signal);
   if (typeof value === "bigint") return value.toString(10);
   if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) return String(value);
   if (typeof value === "string" && DECIMAL_RE.test(value)) return value;
   throw new Error("Invalid nonce lookup response.");
 }
 
-export async function readChainTime(): Promise<string> {
+export async function readChainTime(signal?: AbortSignal): Promise<string> {
   if (!inFlightLatestBlock) {
     inFlightLatestBlock = readRpcBudget.request({
       rowId: "latest-block",
       key: `${chainIdDecimal()}:latest`,
-      signal: new AbortController().signal,
+      signal: signal ?? new AbortController().signal,
       call: () => readClient.getBlock({ blockTag: "latest" }),
     }).then((block) => {
         const timestamp = block.timestamp;
@@ -401,12 +401,12 @@ function returnedCaseId(value: unknown): string | undefined {
 
 type RpcRequest = (args: { method: string; params?: unknown[] }) => Promise<unknown>;
 
-async function lightweightTransactionStatus(client: ReturnType<typeof createClient>, hash: string): Promise<string> {
+async function lightweightTransactionStatus(client: ReturnType<typeof createClient>, hash: string, signal?: AbortSignal): Promise<string> {
   const request = client.request as unknown as RpcRequest;
   const response = await readRpcBudget.request({
     rowId: "transaction-status",
     key: hash,
-    signal: new AbortController().signal,
+    signal: signal ?? new AbortController().signal,
     call: () => request({ method: "gen_getTransactionStatus", params: [{ txId: hash }] }),
   });
   if (typeof response !== "object" || response === null) throw new Error("Transaction status response is invalid.");
@@ -416,11 +416,11 @@ async function lightweightTransactionStatus(client: ReturnType<typeof createClie
   return name;
 }
 
-async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, hash: string): Promise<ContractReceipt | null> {
+async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, hash: string, signal?: AbortSignal): Promise<ContractReceipt | null> {
   const receipt = await readRpcBudget.request({
     rowId: "terminal-receipt",
     key: hash,
-    signal: new AbortController().signal,
+    signal: signal ?? new AbortController().signal,
     call: () => client.waitForTransactionReceipt({
       hash: hash as unknown as GenLayerHash,
       status: TransactionStatus.FINALIZED,
@@ -440,12 +440,12 @@ async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, has
   };
 }
 
-async function pollClientFinalized(client: ReturnType<typeof createClient>, hash: string, attempt: number): Promise<ContractReceipt | null> {
+async function pollClientFinalized(client: ReturnType<typeof createClient>, hash: string, attempt: number, signal?: AbortSignal): Promise<ContractReceipt | null> {
   if (attempt < 3) {
-    const status = await lightweightTransactionStatus(client, hash);
+    const status = await lightweightTransactionStatus(client, hash, signal);
     if (status !== TransactionStatus.FINALIZED) return null;
   }
-  return fullFinalizedReceipt(client, hash);
+  return fullFinalizedReceipt(client, hash, signal);
 }
 
 export function parseRecord(raw: string): CaseRecord | null {
@@ -474,14 +474,14 @@ export function makeWriteAdapter(wallet: ConnectedWallet): ContractWriteAdapter 
       if (typeof hash !== "string" || !HASH_RE.test(hash)) throw new Error("Wallet did not return a transaction hash.");
       return hash.toLowerCase().startsWith("0x") ? hash.toLowerCase() : `0x${hash.toLowerCase()}`;
     },
-    async pollFinalized(hash, attempt = 1) {
-      return pollClientFinalized(client, hash, attempt);
+    async pollFinalized(hash, attempt = 1, signal) {
+      return pollClientFinalized(client, hash, attempt, signal);
     },
   };
 }
 
-export async function pollFinalized(hash: string, attempt = 1): Promise<ContractReceipt | null> {
-  return pollClientFinalized(readClient, hash, attempt);
+export async function pollFinalized(hash: string, attempt = 1, signal?: AbortSignal): Promise<ContractReceipt | null> {
+  return pollClientFinalized(readClient, hash, attempt, signal);
 }
 
 export function isSuccessfulReceipt(receipt: ContractReceipt): boolean {
