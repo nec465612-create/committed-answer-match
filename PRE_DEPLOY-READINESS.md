@@ -7,10 +7,10 @@
 | Workflow | Build |
 | Category | `PROJECT` |
 | Checkpoint | `PRE_DEPLOY` |
-| Package identity | `CAM-PREDEPLOY-9F6452B6-LOCAL-1` |
-| Exact source revision | `9f6452b6d2030605f72d9912b095c501b62451ac` |
-| Status | `READY FOR PRE_DEPLOY REVIEW / WAITING RETAINED REVIEWER ROUTE` |
-| Anonymous reviewer delivery | `NOT SENT — no retained reviewer route supplied` |
+| Package identity | `CAM-PREDEPLOY-B255CD33-DELTA-1` |
+| Exact source revision | `b255cd3359ad3a870ba61c370d4133dcd9f96a30` |
+| Status | `ANONYMOUS REVIEW CHANGES REQUIRED — DELTA READY FOR RETAINED REVIEWER` |
+| Anonymous reviewer delivery | `RETAINED ROUTE SUPPLIED; DELTA READY TO SEND` |
 | Studionet contract | Not deployed; no address or deployment transaction exists |
 | Studio account | Selected and locked for deployment role: `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902`; no secret is recorded |
 | GitHub/Vercel targets | Not supplied; no push or hosting release exists |
@@ -25,30 +25,44 @@ User confirmation recorded in this Task: `Xác nhận contract này là INTENTIO
 
 ## Exact source and approved baseline
 
-Research and specification artifacts remain the exact approved upstream baseline:
+Research and specification artifacts remain the exact approved upstream baseline. The canonical package identifiers recorded by the approved handoff are not claims about the SHA-256 of the local files:
 
-```text
-RESEARCH-HANDOFF.md 3464E830908CB1D87504057567242D36BDCD0C4FD59934B7D22F6482C6799ED2
-STAGE-1.md           29F4157210B2D9100D7F04FB7FBCC77E56BEC8B821813E4D7E0C3E88F123A686
-STAGE-2.md           D67DEA1887DDBD85E62692EC5EB8F6C31F03025A44858A2FA4B07AE36B3627BA
-```
+~~~text
+Canonical research package SHA: 3464E830908CB1D87504057567242D36BDCD0C4FD59934B7D22F6482C6799ED2
+Canonical Stage 1 package SHA:  29F4157210B2D9100D7F04FB7FBCC77E56BEC8B821813E4D7E0C3E88F123A686
+Canonical Stage 2 package SHA:  D67DEA1887DDBD85E62692EC5EB8F6C31F03025A44858A2FA4B07AE36B3627BA
+~~~
+
+Exact local artifacts used for this checkout:
+
+~~~text
+RESEARCH-HANDOFF.md 90887C6D6AC6BEC64923E055B6BA49A58CD744AED71DBF7274E029C413C836FE
+STAGE-1.md           BF5AABF59A75957BBCB95BDC0E6859F0AB83916EEBFD0974078E7CED54779155
+STAGE-2.md           0A63F8F82F794555B08A9EEF04D925322CF940F205104D516CCC3E6462537749
+~~~
 
 The current implementation is a single `CommittedAnswerMatch` contract plus a React/Vite frontend. The source hashes at the exact revision are:
 
-```text
+~~~text
 contracts/main.py 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
 contract-schema.json B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
 tests/test_contract.py 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
-frontend/src/App.tsx F696EE9A896EDFFB15074675216708D63F9A2DF61D52AD9BABBBC4302DC0D060
+frontend/src/App.tsx 935927EDC425818390585E86BA7B3C75E2B0A737E6187DF813A79BFD12BD3349
 frontend/src/styles.css A7413DC9BB6A7108DA0AE396DC7948AB53E42E992BBEFADFBCBFA64D12D22887
-frontend/src/contract.ts 28223FD78C1688946433DDF3A752C3BF78416CA5A45DC532E003ACB05D1BC076
-frontend/src/pending.ts E258BE741E2641F4D03741BE7EF3A7969F4BD1600D8CACDA7BC63723107FD1F3
-frontend/src/chain/writeCoordinator.ts C453F34D3496F2CA701793025D160E5C82CE7B332C7895E45A66A7F148C67E43
+frontend/src/contract.ts 615A558588594FBBD52266091F4D44CB0A4676BF83ECF8E4265904E168A50753
+frontend/src/contract.test.ts 89385A1A2A8EDD9E87420BDD3AB01B8F0CB9682E358A180D64DD3ADF7C07C80D
+frontend/src/pending.ts 4C239071503006187DB8733F51CC9938F6D7F646D6C1715E9D431E52FEE989A6
+frontend/src/pending.test.ts A9996DFB7D17E44C5409B259715DF0544962B61B9D291DBCD82E2AAD4FFE0726
+frontend/src/chain/writeCoordinator.ts 0B0975E34A062F3F2ABA562E1702D1DF5906E3848B771A4C732CB321876F11DE
+frontend/src/chain/writeCoordinator.test.ts 527531E4477EC972B6360CE915BEB03E850769E52905FF0B28114D70BF165652
+frontend/src/verification.ts 8E9F345FD4095EADC4206755781E853E85F69A7725C2A480A34ACFDD840E499B
+frontend/src/verification.test.ts FCE7DAEA4A79B8739564C85035B5C824D36EC471FF73EDA1086DC06FB783E05F
 frontend/src/wallet/providers.ts A519ADB2FF99637EC51012F849B34583F48C182E85DEECD66F5046C037667A91
 frontend/src/wallet/connection.ts 7615F7B529BE0553EF3146B1E27E6414ED9BCB2B2565DE81B4CF5AC6C14A7773
-```
+docs/RPC-BUDGET.md 595BBFF3CE433EFF3586EA501F95DBD6669FA80041263AEC0E1BA99B594BB09B
+~~~
 
-The exact source commit includes the local functional shell, its tests, the contract schema, `DESIGN.md`, and `README.md`. `CLAUDE-FRONTEND-REDESIGN-PROMPT.md` is a later handoff document that names this source revision; it is not a source change.
+The implementation source revision is b255cd3359ad3a870ba61c370d4133dcd9f96a30. It adds exact method-specific verification, same-hash reconciliation, lock-free journal reads, backup binding, chain-time expiry gating, CRLF-safe reveal hashing, and the dual-scope RPC budget document. The user-frozen contract itself remains unchanged by any later deployment action.
 
 ## Runtime, documentation, and technical decisions
 
@@ -138,13 +152,20 @@ The following commands were executed against this exact source revision:
 | Contract lint | `genvm-lint check contracts\\main.py` | `Lint passed (3 checks)` |
 | Contract validation | `genvm-lint validate contracts\\main.py` | `Validation passed; CommittedAnswerMatch; 13 methods (7 view, 6 write)` |
 | Schema | `genvm-lint schema --json -o contract-schema.json contracts\\main.py` | `Schema written` |
-| Frontend unit | `npm test` from `frontend` | `4 files passed; 21 tests passed` |
-| Frontend type/build | `npm run build` from `frontend` | `Vite build passed; 5436 modules; non-blocking >500 kB chunk warning` |
+| Frontend unit | `npm test` from `frontend` | `6 files passed; 30 tests passed` |
+| Frontend type check | `npx tsc --noEmit` from `frontend` | Pass |
+| Frontend build | `npm run build` from `frontend` | `Vite build passed; 5437 modules; non-blocking >500 kB chunk warning` |
 | Browser E2E | `npm run test:e2e` from `frontend` | `3 passed` |
 | Closure serialization | `cloudpickle.dumps` of captured leader and validator with `VMContext.check_pickling=True` | Passed in the installed Direct Mode runtime; no pickling error |
 | Static trust scans | bounded `rg` scans for forbidden provider singleton and journal-key derivation | No forbidden matches |
 
 The contract tests cover idempotent context-bound creation, authorization, wrong phase, stale revision, atomic bad reveal, exact match, consensus NO_MATCH, deliberate validator disagreement, malformed consensus, UNKNOWN/cooldown/exhaustion, explicit void expiry, inclusive deadline behavior, wrong chain context, bounded lists, and production-shaped closure serialization.
+
+## Separate RPC budget gate
+
+`docs/RPC-BUDGET.md` is the locked project matrix for both independent scopes required by the canonical rule: `STUDIO.RPC_BUDGET` for Studio/CLI/Studio-E2E traffic and `FRONTEND.RPC_BUDGET` for browser/Vercel traffic. The Studio matrix is required before opening Studio, deploying, or sending any Studio transaction. The frontend matrix is required before frontend repair and must later be measured on the exact release. Neither scope can satisfy the other.
+
+The matrix enforces local/Direct Mode first, one exact deploy, unique live transitions only, no parallel poller, bounded lightweight status probes, full receipt only at terminal/diagnostic boundary, one deliberate authoritative readback, no duplicate submission, and explicit variance accounting. Studio evidence is NOT_YET_LIVE; frontend evidence is LOCAL_ONLY. Missing live measurement is not zero and blocks the later POST_DEPLOY_TEST/release gate.
 
 ## Minimum Studio E2E plan after anonymous approval
 
@@ -153,10 +174,10 @@ All live rows must be executed by the primary AI in the Codex in-app GenLayer St
 | ID | Criterion and actor | Action / method | Expected final evidence |
 |---|---|---|---|
 | S00 | Deploy/freeze parity; locked Studio deployer | Deploy the exact frozen source with the empty constructor | Studionet `FINALIZED`, semantic execution success, deployed source/version and SHA-256 parity, initial `get_count()` readback `0` |
-| S01 | Creator A positive path | `create_match` with a fresh lowercase 32-hex nonce, distinct B address, public clue, and commitment derived from the exact chain/contract/A/B/nonce/clue/answer/salt preimage | `FINALIZED` + `FINISHED_WITH_RETURN`, returned ID, `GUESS_OPEN` revision `1`, exact `get_case`/`get_version` readback |
-| S02 | Assigned guesser B | `submit_guess(id, "hello", 1)` on the S01 case | `REVEAL_WAIT` revision `2`, locked guess, new deadline, exact history/readback |
-| S03 | Creator A | Verify the saved backup and call `reveal_answer(id, "hello", salt, 2)` | `FROZEN` revision `3`, revealed answer/salt, commitment recomputation parity, exact history/readback |
-| S04 | Independent evaluator | `evaluate_match(id, 3)` on S01 | `DONE`/`MATCH`, accepted attempt `1`, `{v:1,label:MATCH}`, finalized receipt, consensus/finality and historical readback |
+| S01 | Creator A positive path | `create_match` with a fresh lowercase 32-hex nonce, distinct B address, public clue, and commitment derived from the exact chain/contract/A/B/nonce/clue/answer/salt preimage | `FINALIZED` + `FINISHED_WITH_RETURN`, returned ID, `GUESS_OPEN` revision `1`, one exact `get_version` readback; `get_case` only on an explicit user read |
+| S02 | Assigned guesser B | `submit_guess(id, "hello", 1)` on the S01 case | `REVEAL_WAIT` revision `2`, locked guess, new deadline, one exact `get_version` history/readback |
+| S03 | Creator A | Verify the saved backup and call `reveal_answer(id, "hello", salt, 2)` | `FROZEN` revision `3`, revealed answer/salt, commitment recomputation parity, one exact `get_version` history/readback |
+| S04 | Independent evaluator | `evaluate_match(id, 3)` on S01 | `DONE`/`MATCH`, accepted attempt `1`, `{v:1,label:MATCH}`, finalized receipt, consensus/finality and one exact `get_version` historical readback |
 | S05 | Semantic no-match path; A/B plus independent evaluator | Fresh case with public synthetic clue, revealed answer `correct reference`, and materially different guess `different wording`; call create, guess, reveal, evaluate | Consensus-backed `DONE`/`NO_MATCH` with `FINISHED_WITH_RETURN`, stable result and historical readback; if consensus is unavailable, record failure and do not reinterpret it as success |
 | S06 | No-write authorization/revision control | Repeat a case write from the wrong actor and with a stale revision; attempt a bad reveal | Rejection/failed execution with no revision, history, phase, attempt, or deadline mutation; authoritative pre-state readback |
 | S07 | UNKNOWN/retry safety | Use a fresh semantic case and execute evaluation/retry only when the live result is `UNKNOWN`; retry once after the documented 60-second transaction-time cooldown | `UNRESOLVED` then a valid retry transition or a bounded unchanged failure; no terminal MATCH can arise from UNKNOWN; exact history/readback |
@@ -175,8 +196,8 @@ The current exact-source package must satisfy these checkpoint rules before any 
 
 Remaining handoff blocker and later-stage blanks are intentional and explicit:
 
-1. The user must supply the retained anonymous reviewer route for the one required first-contact handoff. The complete package is not marked sent merely because this file or the prompt file exists.
+1. The retained anonymous reviewer route is supplied in this Task. The delta package must be sent on that existing route and verified by reading the exact completed reviewer turn; no replacement reviewer conversation is allowed.
 2. Contract address, deployment transaction, live receipts, Explorer/RPC readback, GitHub identity, Vercel team/project, and public release URL do not exist yet; these are later-stage blanks and are not being presented as current evidence.
-3. Contract address, deployment transaction, live receipts, Explorer/RPC readback, GitHub identity, Vercel team/project, and public release URL do not exist yet and are intentionally blank at this checkpoint.
+3. The user-frozen classification is recorded, but it does not waive the anonymous PRE_DEPLOY review, Studio RPC matrix, Studio E2E, or later release gates.
 
-Until these are resolved, do not deploy, sign, write, push, configure a public contract address, or claim `PRE_DEPLOY` approval.
+Until the retained reviewer returns the exact approval verdict, do not deploy, sign, write, push, configure a public contract address, or claim `PRE_DEPLOY` approval.

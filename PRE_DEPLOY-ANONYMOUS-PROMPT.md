@@ -1,4 +1,4 @@
-NOT SENT — MANUAL RELAY REQUIRED
+DELTA — RETAINED REVIEWER ROUTE (FIRST CONTACT ALREADY DELIVERED)
 
 REVIEWER: anonymous co-review AI
 WORKFLOW: BUILD
@@ -7,9 +7,9 @@ PROJECT: Committed Answer Match
 PROJECT PATH: E:\GenLayer-Projects\committed-answer-match
 CATEGORY: PROJECT
 CHECKPOINT: PRE_DEPLOY
-REVISION/PACKAGE: source `9f6452b6d2030605f72d9912b095c501b62451ac`; package `CAM-PREDEPLOY-9F6452B6-LOCAL-1`
+REVISION/PACKAGE: source `b255cd3359ad3a870ba61c370d4133dcd9f96a30`; package `CAM-PREDEPLOY-B255CD33-DELTA-1`
 DOCUMENT MODE / BASELINE: full exact-source review from the approved Stage 1/2 baseline
-STATUS: ready for first-contact delivery once the retained reviewer route is supplied; not yet sent
+STATUS: delta ready for delivery on the supplied retained route; do not resend first contact
 
 ## Objective and acceptance criteria
 
@@ -19,39 +19,54 @@ Approve only if every current PRE_DEPLOY requirement passes for this exact revis
 
 ## Complete review package
 
-The source revision is the local root commit `9f6452b6d2030605f72d9912b095c501b62451ac`. The later documentation commit does not change source behavior. No signature, deployment transaction, contract write, Studio E2E, GitHub push, Vercel release, Explorer readback, or public release URL exists.
+The implementation source revision is `b255cd3359ad3a870ba61c370d4133dcd9f96a30`. This is a delta to the already-delivered first-contact review on the retained route, not a new reviewer task. The delta adds exact method-specific verification, same-hash reconciliation, lock-free journal reading, backup binding, chain-time expiry gating, CRLF-safe reveal hashing, and the two independent RPC budget matrices. No signature, deployment transaction, contract write, Studio E2E, GitHub push, Vercel release, Explorer readback, or public release URL exists.
 
-Approved upstream artifact hashes:
+Canonical approved upstream package identifiers (not local file hashes):
 
-```text
-RESEARCH-HANDOFF.md 3464E830908CB1D87504057567242D36BDCD0C4FD59934B7D22F6482C6799ED2
-STAGE-1.md           29F4157210B2D9100D7F04FB7FBCC77E56BEC8B821813E4D7E0C3E88F123A686
-STAGE-2.md           D67DEA1887DDBD85E62692EC5EB8F6C31F03025A44858A2FA4B07AE36B3627BA
-```
+~~~text
+Canonical research package SHA: 3464E830908CB1D87504057567242D36BDCD0C4FD59934B7D22F6482C6799ED2
+Canonical Stage 1 package SHA:  29F4157210B2D9100D7F04FB7FBCC77E56BEC8B821813E4D7E0C3E88F123A686
+Canonical Stage 2 package SHA:  D67DEA1887DDBD85E62692EC5EB8F6C31F03025A44858A2FA4B07AE36B3627BA
+~~~
+
+Exact local artifacts used for this checkout:
+
+~~~text
+RESEARCH-HANDOFF.md 90887C6D6AC6BEC64923E055B6BA49A58CD744AED71DBF7274E029C413C836FE
+STAGE-1.md           BF5AABF59A75957BBCB95BDC0E6859F0AB83916EEBFD0974078E7CED54779155
+STAGE-2.md           0A63F8F82F794555B08A9EEF04D925322CF940F205104D516CCC3E6462537749
+~~~
 
 Exact implementation/evidence hashes:
 
-```text
+~~~text
 contracts/main.py 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
 contract-schema.json B6450B0E994156186EFCA475BCE61F079A468CCFAC38D80E486617B7EC078FAB
 tests/test_contract.py 8EBDE5C711D199A6E471D5F927C6CC9E47359F3FFF070F3FD42D32482D30A596
-frontend/src/App.tsx F696EE9A896EDFFB15074675216708D63F9A2DF61D52AD9BABBBC4302DC0D060
+frontend/src/App.tsx 935927EDC425818390585E86BA7B3C75E2B0A737E6187DF813A79BFD12BD3349
 frontend/src/styles.css A7413DC9BB6A7108DA0AE396DC7948AB53E42E992BBEFADFBCBFA64D12D22887
-frontend/src/contract.ts 28223FD78C1688946433DDF3A752C3BF78416CA5A45DC532E003ACB05D1BC076
-frontend/src/pending.ts E258BE741E2641F4D03741BE7EF3A7969F4BD1600D8CACDA7BC63723107FD1F3
-frontend/src/chain/writeCoordinator.ts C453F34D3496F2CA701793025D160E5C82CE7B332C7895E45A66A7F148C67E43
+frontend/src/contract.ts 615A558588594FBBD52266091F4D44CB0A4676BF83ECF8E4265904E168A50753
+frontend/src/contract.test.ts 89385A1A2A8EDD9E87420BDD3AB01B8F0CB9682E358A180D64DD3ADF7C07C80D
+frontend/src/pending.ts 4C239071503006187DB8733F51CC9938F6D7F646D6C1715E9D431E52FEE989A6
+frontend/src/pending.test.ts A9996DFB7D17E44C5409B259715DF0544962B61B9D291DBCD82E2AAD4FFE0726
+frontend/src/chain/writeCoordinator.ts 0B0975E34A062F3F2ABA562E1702D1DF5906E3848B771A4C732CB321876F11DE
+frontend/src/chain/writeCoordinator.test.ts 527531E4477EC972B6360CE915BEB03E850769E52905FF0B28114D70BF165652
+frontend/src/verification.ts 8E9F345FD4095EADC4206755781E853E85F69A7725C2A480A34ACFDD840E499B
+frontend/src/verification.test.ts FCE7DAEA4A79B8739564C85035B5C824D36EC471FF73EDA1086DC06FB783E05F
 frontend/src/wallet/providers.ts A519ADB2FF99637EC51012F849B34583F48C182E85DEECD66F5046C037667A91
 frontend/src/wallet/connection.ts 7615F7B529BE0553EF3146B1E27E6414ED9BCB2B2565DE81B4CF5AC6C14A7773
-```
+docs/RPC-BUDGET.md 595BBFF3CE433EFF3586EA501F95DBD6669FA80041263AEC0E1BA99B594BB09B
+~~~
 
 Relevant implementation diff summary:
 
 - `contracts/main.py` implements the approved C2 lifecycle, canonical context-bound SHA-256 commitment, deterministic exact-match short circuit, one bounded semantic assessment with independent validator rederivation, atomic phase/revision/history updates, and explicit expiry.
-- `frontend/src/contract.ts` uses the installed `genlayer-js` `studionet` client, finality/execution enums, canonical decimal arguments, and exact read methods.
-- `frontend/src/chain/writeCoordinator.ts` writes the journal before signing, submits once, polls at most three times, requires `FINALIZED` plus `FINISHED_WITH_RETURN`, performs bounded post-readback, and preserves reconciliation on uncertainty.
-- `frontend/src/pending.ts` implements the required `navigator.locks` mutex, random 16-byte reservation keys, 32-record cap, immutable operation context, export, and reconciliation semantics.
+- `frontend/src/contract.ts` uses one shared installed `genlayer-js` `studionet` read client, in-flight deduplication, the official lightweight status endpoint for the first two probes, terminal/diagnostic full receipt normalization, exact record parsing, and explicit chain-time reads.
+- `frontend/src/chain/writeCoordinator.ts` writes the journal before signing, submits once, polls at most three times, requires `FINALIZED` plus `FINISHED_WITH_RETURN`, performs one deliberate authoritative readback, bounds Retry-After/backoff/cancellation, and preserves same-hash reconciliation on uncertainty.
+- `frontend/src/pending.ts` keeps mutations under the required `navigator.locks` mutex while making journal listing/export and same-hash reconciliation available when signing is unavailable; it retains random 16-byte reservation keys, the 32-record cap, and immutable operation context.
 - `frontend/src/wallet/` implements bounded EIP-6963 plus recognized legacy discovery for only MetaMask, OKX Wallet, and Rabby, with explicit selection and reload-on-session-change behavior.
-- `frontend/src/App.tsx` provides Home, New match, Match, Journal, exact public warning/assessment note, backup verification, and role-aware actions. The final visual redesign is a separate bounded Claude handoff and is not a reason to alter this contract or transaction package.
+- `frontend/src/App.tsx` enforces exact method-specific postconditions, offers same-hash Resume/Reconcile without resubmission, binds backup acknowledgement to the current commitment context, normalizes CRLF answers before reveal, gates expiry on explicit refreshed chain time, and keeps role-aware UI truthful. The final visual redesign is a separate bounded Claude handoff and is not a reason to alter this contract or transaction package.
+- `docs/RPC-BUDGET.md` records independent `STUDIO.RPC_BUDGET` and `FRONTEND.RPC_BUDGET` matrices, evidence schemas, per-write envelopes, physical-provider-call measurement requirements, and the explicit pre-deployment live-evidence boundary.
 
 Observed Studio identity before any deployment: selected account `0xeF5D2119416A2f5afa35dCFA209766EFC1BE5902` in the Codex in-app Browser on 2026-09-05. No secret is included. The displayed balance was 998 GEN at observation time and is not treated as a durable balance claim.
 
@@ -127,11 +142,14 @@ Validation passed; CommittedAnswerMatch; 13 methods (7 view, 6 write)
 genvm-lint schema --json -o contract-schema.json contracts\main.py
 Schema written to contract-schema.json
 
+npx tsc --noEmit
+pass
+
 npm test
-4 files passed; 21 tests passed
+6 files passed; 30 tests passed
 
 npm run build
-Vite build passed; 5436 modules; non-blocking warning for a minified chunk over 500 kB
+Vite build passed; 5437 modules; non-blocking warning for a minified chunk over 500 kB
 
 npm run test:e2e
 3 passed
@@ -141,9 +159,57 @@ The contract suite covers idempotent creation/context binding, authorization and
 
 Frontend E2E covers no account request on page load or picker open, exact single-provider rendering, zero-provider empty state without fake wallet choices, focus restoration, inert background, and journal-lock failure without signing. Static scans found no direct global `window.ethereum` access and no derivation of `glj1:` storage keys from `operationFingerprint`.
 
+## Delta closure matrix
+
+| Prior finding | Closure in this exact delta | Regression/evidence |
+|---|---|---|
+| F-001 exact method-specific readback missing | `frontend/src/verification.ts` and `frontend/src/App.tsx` require exact create, submit, reveal, evaluate, retry and expire postconditions; broad terminal phase acceptance is rejected | `frontend/src/verification.test.ts`; `npm test` |
+| F-002 no same-hash Resume/Reconcile UI | `writeCoordinator.reconcileWrite` and JournalPanel Reconcile invoke one lifecycle probe plus one authoritative view and never submit | `frontend/src/chain/writeCoordinator.test.ts`; browser path |
+| F-003 journal unavailable without Web Locks | Journal list/export and lockless reconcile use read-only storage scan; only signing/mutations require Web Locks | `frontend/src/pending.test.ts` and Playwright no-lock test |
+| F-004 backup acknowledgement not bound to current commitment | Binding includes chain, contract, creator, opponent, nonce, clue, answer, salt and commitment; input/wallet/contract changes reset acknowledgement | `backupBinding` tests in `frontend/src/verification.test.ts` |
+| F-005 six-RPC write budget exceeded | At most one submission, three bounded lifecycle probes, and one action readback; create uses returned ID when available or one fallback ID-plus-version path | coordinator tests and `docs/RPC-BUDGET.md` |
+| F-006 upstream artifact labels were misleading | Canonical handoff SHAs and exact local file SHAs are separately labeled above | Rehashed local `RESEARCH-HANDOFF.md`, `STAGE-1.md` and `STAGE-2.md` |
+| F-007 CRLF answer/hash mismatch | Reveal answer is normalized with the contract's CRLF-to-LF rule before hashing and submission | `frontend/src/contract.test.ts` |
+| F-008 local clock used as expiry authority | Expiry-capable cases require an explicit latest-block chain-time read; local clock is not authoritative | `readChainTime` path and no local-clock expiry |
+| Dual RPC rule omitted Studio scope | `docs/RPC-BUDGET.md` contains both independent matrices and both evidence sections; Studio status is READY_FOR_PRE_DEPLOY_REVIEW and live Studio evidence is NOT_YET_LIVE | Package document plus exact source hash |
+
+## Required dual RPC budget review
+
+The canonical rule has two independent scopes and this delta must be reviewed against both. Studio/CLI/Studio-E2E traffic cannot be counted as frontend evidence, and browser/Vercel traffic cannot be counted as Studio evidence. Missing live measurement is not zero.
+
+### STUDIO RPC BUDGET MATRIX
+
+| Operation | Planned maximum | Boundary |
+|---|---:|---|
+| Session/network checks | 2 checks | One account and Studionet confirmation |
+| Exact source/schema preflight | 1 probe | One exact source/schema check before deploy |
+| S00 deploy | 6 RPC/actions | One submission, at most 3 lifecycle probes at 2/4/8 seconds, code/hash check, count readback |
+| S01 create | 6 RPC/actions | One submission, at most 3 lifecycle probes, returned-ID readback; ID lookup plus version only when no returned ID |
+| S02/S03/S04/S08 each | 5 RPC/actions | One submission, at most 3 lifecycle probes, one exact version readback |
+| S05 semantic NO_MATCH sequence | 20 RPC/actions | Four unique writes, each bounded as above with one readback |
+| S06 rejected transitions | 9 RPC/actions | Three unique attempts; no replay after a hash |
+| S07 UNKNOWN/retry | 10 RPC/actions | One evaluation and retry only when live UNKNOWN plus cooldown permits |
+| Explicit read/reconcile | 1 view or 1 lifecycle probe | User-triggered only; never a submission |
+
+Studio must use local/Direct Mode first, deploy the exact frozen source once, execute only unique material transitions, use lightweight transaction status for the first two probes, fetch a full receipt only at terminal/diagnostic boundary, honor Retry-After, and stop on terminal/rate-limit/cooldown/blocker. Actual Studio counts, intervals, hashes, receipts, readbacks, transactions and variance are currently NOT_YET_LIVE.
+
+### FRONTEND RPC BUDGET MATRIX
+
+| Workflow | Planned maximum | Boundary |
+|---|---:|---|
+| Landing, wallet picker, journal read/export | 0 | Storage/UI only; no hidden RPC |
+| Explicit wallet connect | 2 provider calls | eth_requestAccounts plus eth_chainId |
+| Open case | 1 view | One shared read client and exact parsed record |
+| Explicit expiry refresh | 2 views | get_case plus latest-block chain time |
+| Create write | 6 logical calls | One submission, at most 3 bounded lifecycle probes, one returned-ID readback or two-view fallback |
+| Any other case write | 5 logical calls | One submission, at most 3 bounded lifecycle probes, one exact post-readback |
+| Same-hash Resume/Reconcile | 2 logical calls | One lifecycle probe/terminal receipt plus one exact view; never submits |
+
+Frontend must use one shared read client/configuration per chain and contract, in-flight deduplication, no stale transaction/verdict cache, deliberate invalidation, bounded Retry-After/backoff/jitter with cancellation, and no duplicate write. Physical wallet-provider nonce/gas/preflight calls must be measured separately on the exact release. Frontend evidence is currently LOCAL_ONLY; exact deployed-release measurement remains required.
+
 ## Minimum-sufficient Studio E2E plan bundled with this checkpoint
 
-No row below has run. After anonymous PRE_DEPLOY approval, the primary AI must operate the Codex in-app GenLayer Studio using the locked account above, record every attempt, and retain secret-free evidence. Use only the exact deployed source, Studionet, and authoritative RPC/Explorer/readback.
+No row below has run. After anonymous PRE_DEPLOY approval, the primary AI must operate the Codex in-app GenLayer Studio using the locked account above, record every attempt, and retain secret-free evidence. The pre-action matrix is `docs/RPC-BUDGET.md` and its Studio scope is independent from the frontend scope. Use only the exact deployed source, Studionet, sparse unique transitions, bounded status probes, one terminal/diagnostic receipt boundary, and authoritative RPC/Explorer/readback.
 
 | ID | Criterion/actor | Exact action | Required evidence |
 |---|---|---|---|
@@ -169,14 +235,14 @@ Apply the current canonical rules, not the primary-AI summary alone:
 - **AI hierarchy:** `PRE_DEPLOY` bundles the Studio E2E plan and occurs before every signature/write/deployment. `POST_DEPLOY_TEST`, `POST_GITHUB_VERCEL_FINAL`, and `EXPLORER_PRE_SUBMISSION` are separate later checkpoints.
 - **REVIEW.OPERATIONAL_PROTOCOL:** independently verify the exact package and do not delegate. Return one exact verdict: `ANONYMOUS REVIEW APPROVED - PRE_DEPLOY`, `ANONYMOUS REVIEW CHANGES REQUIRED - PRE_DEPLOY`, or `ANONYMOUS REVIEW REJECTED - PRE_DEPLOY`. Missing evidence is `CHANGES REQUIRED`, not `INCONCLUSIVE`.
 
-Current missing items are stated facts for this package: no live contract address, deployment transaction, receipt, Explorer/RPC result, GitHub target, Vercel target, or public release URL exists; and no reviewer route has been supplied. Do not infer any of them.
+Current missing items are stated facts for this package: no live contract address, deployment transaction, receipt, Explorer/RPC result, GitHub target, Vercel target, or public release URL exists. The retained reviewer route has been supplied; this delta must be sent there and the exact completed turn must be read back before any gate decision. Do not infer live evidence or approval.
 
 ## Return exactly this schema
 
 ```text
 REVIEWER: anonymous co-review AI
 CHECKPOINT: PRE_DEPLOY
-REVISION/PACKAGE: source 9f6452b6d2030605f72d9912b095c501b62451ac; package CAM-PREDEPLOY-9F6452B6-LOCAL-1
+REVISION/PACKAGE: source b255cd3359ad3a870ba61c370d4133dcd9f96a30; package CAM-PREDEPLOY-B255CD33-DELTA-1
 VERDICT: ANONYMOUS REVIEW APPROVED - PRE_DEPLOY
 FINDINGS: NONE, or for each finding provide ID, severity, violated requirement, exact file/line/URL/artifact, evidence, cause or contradiction, impact, concrete correction, and verification criterion.
 REBUTTALS: none, or each finding ID with accepted/revised/retained decision and exact evidence.

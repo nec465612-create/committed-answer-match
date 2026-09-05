@@ -4,7 +4,7 @@ This file is the project-specific pre-action matrix required by the canonical `S
 
 ## Applicability
 
-- `RPC_BUDGET_REVISION: UNCOMMITTED_DELTA — replace with the exact source commit after this repair`
+- `RPC_BUDGET_REVISION: b255cd3359ad3a870ba61c370d4133dcd9f96a30`
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
