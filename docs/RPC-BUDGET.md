@@ -4,7 +4,8 @@ This file is the project-specific pre-action matrix required by the canonical `S
 
 ## Applicability
 
-- `RPC_BUDGET_REVISION: 999c1c0d71dbbd0f0ed74d6430558bffd7010933`
+- `RPC_BUDGET_MATRIX_REVISION: d0dd30e0405e73ae454eeb4a59b693701be418f3`
+- `REVIEW_PACKAGE_HEAD: supplied in the exact PRE_DEPLOY package; not self-embedded in this Git-tracked matrix`
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
