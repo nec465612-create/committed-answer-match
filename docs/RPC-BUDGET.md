@@ -144,7 +144,7 @@ STUDIO_MATRIX_VARIANCE: "physical requests NOT_APPLICABLE; logical replacement l
 | Ledger row | Physical requests if observable | Studio actions | Transactions | Status observations | Terminal receipt reads | Authoritative readbacks | Retries | Duplicate transactions | Result |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---|
 | Final replacement S00 deploy | NOT_APPLICABLE | 1 | 1 | 2 | 1 | 2 (code parity, `get_count=0`) | 1 pre-hash | 0 | FINALIZED/SUCCESS; release address retained |
-| Intermediate replacement deployments | NOT_APPLICABLE | 2 | 2 | 3 | 2 | 2 (source parity/disposition) | 0 | 0 | Rejected candidates; never upgrade |
+| Intermediate replacement deployments | NOT_APPLICABLE | 2 | 2 | 3 | 2 | 1 (source parity; disposition is classification evidence) | 0 | 0 | Rejected candidates; never upgrade |
 | S01–S04 MATCH path | NOT_APPLICABLE | 4 | 4 | 8 | 4 | 4 | 0 | 0 | FINALIZED/SUCCESS; exact MATCH history |
 | S05 NO_MATCH path | NOT_APPLICABLE | 5 | 5 | 8 | 5 | 5 | 0 | 1 idempotent | FINALIZED/SUCCESS; exact NO_MATCH history |
 | S06 rejection controls | NOT_APPLICABLE | 5 | 5 | 11 | 5 | 5 | 0 | 0 | FINALIZED/ERROR rollback plus unchanged-state proofs |
