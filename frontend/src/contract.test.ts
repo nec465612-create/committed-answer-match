@@ -51,6 +51,12 @@ describe("transaction receipt parsing", () => {
     expect(parseTransactionReceipt({ status: "FINALIZED", txExecutionResultName: "Return" })).toMatchObject({
       txExecutionResultName: "FINISHED_WITH_RETURN",
     });
+    expect(parseTransactionReceipt({ status: "FINALIZED", data: { resultName: "SUCCESS" } })).toMatchObject({
+      txExecutionResultName: "FINISHED_WITH_RETURN",
+    });
+    expect(parseTransactionReceipt({ status: "FINALIZED", consensus_data: { leader_receipt: [{ execution_result: "Return" }] } })).toMatchObject({
+      txExecutionResultName: "FINISHED_WITH_RETURN",
+    });
   });
 });
 

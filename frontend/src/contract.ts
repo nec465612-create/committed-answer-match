@@ -417,13 +417,16 @@ export function parseTransactionReceipt(raw: unknown): ContractReceipt | null {
   const value = raw as Record<string, unknown>;
   const finalStatus = statusName(value.statusName ?? value.status_name ?? value.status);
   if (finalStatus !== TransactionStatus.FINALIZED) return null;
+  const nested = value.data as Record<string, unknown> | undefined;
   const leaderReceipt = (value.consensus_data as { leader_receipt?: unknown[] } | undefined)?.leader_receipt;
   const leaderExecution = Array.isArray(leaderReceipt) && leaderReceipt.length > 0 && typeof leaderReceipt[0] === "object" && leaderReceipt[0] !== null
     ? (leaderReceipt[0] as { execution_result?: unknown }).execution_result
     : undefined;
   const execution = executionResultName(
     value.txExecutionResultName ?? value.tx_execution_result_name ?? value.txExecutionResult ?? value.tx_execution_result ??
-    value.resultName ?? (typeof value.result === "string" ? value.result : undefined) ?? leaderExecution,
+    value.execution_result ?? value.resultName ?? (typeof value.result === "string" ? value.result : undefined) ??
+    nested?.txExecutionResultName ?? nested?.tx_execution_result_name ?? nested?.txExecutionResult ?? nested?.tx_execution_result ??
+    nested?.execution_result ?? nested?.resultName ?? (typeof nested?.result === "string" ? nested.result : undefined) ?? leaderExecution,
   );
   const id = typeof value.id === "string" ? value.id : undefined;
   return {
