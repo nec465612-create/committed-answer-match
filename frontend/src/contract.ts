@@ -431,10 +431,10 @@ async function fullFinalizedReceipt(client: ReturnType<typeof createClient>, has
     rowId: "terminal-receipt",
     key: hash,
     signal: signal ?? new AbortController().signal,
-    // Studionet's deployed legacy node accepts the transaction hash directly
-    // here; passing the newer documented request object is persisted as a dict
-    // by that runtime and fails before the receipt can be read.
-    call: () => request({ method: "gen_getTransactionReceipt", params: [hash] }),
+    // This deployed legacy Studionet node has no gen_getTransactionReceipt
+    // method; the pinned SDK's compatible read surface is the Ethereum-shaped
+    // transaction lookup below.
+    call: () => request({ method: "eth_getTransactionByHash", params: [hash] }),
   });
   return parseTransactionReceipt(receipt);
 }
