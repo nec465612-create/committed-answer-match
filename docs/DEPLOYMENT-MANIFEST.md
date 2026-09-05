@@ -1,6 +1,6 @@
 # Committed Answer Match — Draft Deployment Manifest
 
-`MANIFEST_STATUS: DRAFT_PRE_DEPLOY`
+`MANIFEST_STATUS: FIRST_INSTANCE_REJECTED — REPLACEMENT_PRE_DEPLOY_PENDING`
 
 This secret-free manifest is the deployment/recovery binding for the exact
 reviewed source. It is not a deployment receipt and contains no private key,
@@ -53,7 +53,7 @@ USER_CONFIRMATION: Xác nhận contract này là INTENTIONALLY FROZEN; nếu có
 POST_DEPLOY_DEFECT: deploy a new contract and update the frontend address; never upgrade this address
 ```
 
-## Planned deployment checks
+## First deployment outcome
 
 Before S00, record the actual Studio source view/hash, account, network and
 constructor arguments. After S00, append the deployment transaction hash,
@@ -62,13 +62,19 @@ finality, semantic execution result, deployed-code/source parity and initial
 from a plan or from a UI label.
 
 ```text
-DEPLOYMENT_TRANSACTION: not yet sent
-DEPLOYED_CONTRACT: not yet created
-FINALITY: not yet created
-SEMANTIC_EXECUTION: not yet created
-SOURCE_PARITY: not yet created
-INITIAL_COUNT_READBACK: not yet created
+DEPLOYMENT_TRANSACTION: 0x1006b81a527f73db301f63c3ed551f70c1c8720dbe23f4262880851f1340d711
+DEPLOYED_CONTRACT: 0x1dCcBE4942786Efc15Bb8e78d749e8D89f4fb68c
+FINALITY: FINALIZED
+SEMANTIC_EXECUTION: deployment success; S01 create_match failed BAD_ADDRESS
+SOURCE_PARITY: normalized deployed payload equals 48B8B3BA0BEB806699CA777F90178020A85ACC6CA2EDB74765F1E109EFFEB18B
+INITIAL_COUNT_READBACK: 0
+DISPOSITION: rejected frozen instance; never upgrade
+REPLACEMENT_SOURCE_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
+REPLACEMENT_SOURCE_SHA256: 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
 ```
+
+See `STUDIO-INCIDENT-2026-09-05.md` for the two failed transaction hashes,
+root-cause evidence, and the replacement candidate's local verification.
 
 The separate [`RPC-BUDGET.md`](/E:/GenLayer-Projects/committed-answer-match/docs/RPC-BUDGET.md)
 contains the required `STUDIO RPC BUDGET MATRIX` and independent

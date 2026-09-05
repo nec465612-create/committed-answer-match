@@ -10,7 +10,7 @@ This file is the project-specific pre-action matrix required by the canonical `S
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
 - `STUDIO_MATRIX_STATUS: READY_FOR_PRE_DEPLOY_REVIEW`
 - `FRONTEND_MATRIX_STATUS: READY_FOR_PRE_DEPLOY_REVIEW`
-- `STUDIO_EVIDENCE_STATUS: NOT_YET_LIVE — no deploy or Studio transaction has been sent; this is not a zero-request claim`
+- `STUDIO_EVIDENCE_STATUS: PARTIAL/FAILED — S00 passed; S01 failed twice with BAD_ADDRESS; replacement PRE_DEPLOY is pending`
 - `FRONTEND_EVIDENCE_STATUS: LOCAL_ONLY — exact deployed-release measurement is required before POST_DEPLOY_TEST/release`
 
 Official references checked for the current transaction interface and lightweight status method:
@@ -45,11 +45,15 @@ Studio work is sparse and deliberate. Deterministic behavior and rejected transi
 
 ## STUDIO RPC BUDGET EVIDENCE
 
-At this checkpoint every row is explicitly not run. There is no deployment, transaction hash, receipt or live request count to report. POST_DEPLOY_TEST must replace each applicable row with actual counts, intervals, retry/`Retry-After`, receipt/readback calls, total transactions and a variance/result. A plan is not live evidence.
+Studio UI actions and transaction counts below are measured. The hosted UI's internal physical request count was not captured before the run, so it is explicitly unresolved rather than reported as zero. This blocks `POST_DEPLOY_TEST` but does not justify replaying writes. The replacement run must capture the physical count and explain any UI amplification.
 
 | Operation/case | Actual requests | Actual transactions | Hash | Receipt/readback calls | Retry/Retry-After | Variance from matrix | Result |
 |---|---:|---:|---|---:|---|---|---|
-| S00–S08 and session/preflight | NOT RUN — no live Studio traffic | NOT RUN | NONE | NOT RUN | NONE OBSERVED | Pending exact deployed revision | NOT YET LIVE |
+| S00 deploy | UI physical count not captured | 1 | `0x1006b81a527f73db301f63c3ed551f70c1c8720dbe23f4262880851f1340d711` | finalized status, deployed-code parity, `get_count=0` | First submission action failed pre-hash on 30/min; 55s cooldown; one retry | One pre-hash retry; one actual deployment transaction | PASS, count variance unresolved |
+| S01 create F1 | UI physical count not captured | 1 | `0x7a0e1193fe96190b6be2e1a3a9ba331ac0461aa4a8e037df99b1effefbb8b40e` | terminal leader/validator execution inspected | None after hash | Fresh fixture; finalized execution `BAD_ADDRESS` | FAIL, unchanged state expected |
+| S01 create F2 diagnostic | UI physical count not captured | 1 | `0x4d4d1f572abd570f5eca49a54998e5fd028e4007c533f91af0688fb9ef2f183b` | terminal leader/validator execution inspected | None after hash | New nonce and lowercase opponent isolated casing; same `BAD_ADDRESS` | FAIL, root cause located |
+| Read-only diagnostic | UI physical count not captured | 0 | NONE | No contract result obtained | Studio hit 30/min; stopped; later one reload also exhausted the UI budget | Probe abandoned because existing evidence plus verified runtime pattern located the defect | STOPPED ON QUOTA |
+| Replacement S00–S08 | NOT RUN | 0 | NONE | NOT RUN | No action before new PRE_DEPLOY approval | Exact source `5D770C...8C6BC`; new address required | PENDING REVIEW |
 
 ## FRONTEND RPC BUDGET MATRIX
 
