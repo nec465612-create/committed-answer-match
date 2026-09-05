@@ -378,6 +378,34 @@ function executionResultName(value: unknown): string | undefined {
   return undefined;
 }
 
+function nestedExecutionResult(value: unknown): string | undefined {
+  if (typeof value === "string" || typeof value === "number") return executionResultName(value);
+  if (typeof value !== "object" || value === null || Array.isArray(value)) return undefined;
+  const object = value as Record<string, unknown>;
+  const direct = executionResultName(
+    object.txExecutionResultName ?? object.tx_execution_result_name ?? object.txExecutionResult ??
+    object.tx_execution_result ?? object.executionResult ?? object.execution_result ?? object.resultName ??
+    (typeof object.result === "string" ? object.result : undefined) ?? object.name ?? object.message,
+  );
+  if (direct) return direct;
+  if (typeof object.code === "number") {
+    if (object.code === 0) return ExecutionResult.FINISHED_WITH_RETURN;
+    if (object.code > 0) return ExecutionResult.FINISHED_WITH_ERROR;
+  }
+  for (const child of [object.data, object.result, object.leader_receipt, object.leaderReceipt, object.consensus_data]) {
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        const result = nestedExecutionResult(item);
+        if (result) return result;
+      }
+    } else {
+      const result = nestedExecutionResult(child);
+      if (result) return result;
+    }
+  }
+  return undefined;
+}
+
 export function parseTransactionStatus(raw: unknown): string | undefined {
   if (typeof raw === "string" || typeof raw === "number") return statusName(raw);
   if (typeof raw !== "object" || raw === null || Array.isArray(raw)) return undefined;
@@ -418,16 +446,7 @@ export function parseTransactionReceipt(raw: unknown): ContractReceipt | null {
   const finalStatus = statusName(value.statusName ?? value.status_name ?? value.status);
   if (finalStatus !== TransactionStatus.FINALIZED) return null;
   const nested = value.data as Record<string, unknown> | undefined;
-  const leaderReceipt = (value.consensus_data as { leader_receipt?: unknown[] } | undefined)?.leader_receipt;
-  const leaderExecution = Array.isArray(leaderReceipt) && leaderReceipt.length > 0 && typeof leaderReceipt[0] === "object" && leaderReceipt[0] !== null
-    ? (leaderReceipt[0] as { execution_result?: unknown }).execution_result
-    : undefined;
-  const execution = executionResultName(
-    value.txExecutionResultName ?? value.tx_execution_result_name ?? value.txExecutionResult ?? value.tx_execution_result ??
-    value.execution_result ?? value.resultName ?? (typeof value.result === "string" ? value.result : undefined) ??
-    nested?.txExecutionResultName ?? nested?.tx_execution_result_name ?? nested?.txExecutionResult ?? nested?.tx_execution_result ??
-    nested?.execution_result ?? nested?.resultName ?? (typeof nested?.result === "string" ? nested.result : undefined) ?? leaderExecution,
-  );
+  const execution = nestedExecutionResult({ ...value, data: nested });
   const id = typeof value.id === "string" ? value.id : undefined;
   return {
     statusName: finalStatus,
