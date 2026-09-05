@@ -84,6 +84,13 @@ The journal is a local recovery record, not the chain authority.
   signing off for the session. The visible hash and volatile recovery record
   remain available when possible; read, export and same-hash reconciliation
   stay allowed, but no second submission is permitted.
+- Resolution evidence may advance monotonically from `UNKNOWN` or `ABSENT` to
+  exact `UNCHANGED`, `PRESENT` or `COMPETING` evidence under the journal lock;
+  immutable operation context and a nonempty transaction hash never change.
+- Only one write or same-hash reconciliation lifecycle may run at once. A
+  second caller is rejected before it can start another poller or submission.
+- The visible journal is paged at four entries per page; export retains the
+  complete valid and malformed record set.
 - No pending/ambiguous entry is automatically resubmitted. Final success
   still requires finality, semantic execution success and exact authoritative
   readback.

@@ -4,7 +4,7 @@ This file is the project-specific pre-action matrix required by the canonical `S
 
 ## Applicability
 
-- `RPC_BUDGET_REVISION: 25a10bc87230e04d74c4b3459bf42122c911f86b`
+- `RPC_BUDGET_REVISION: 30b40a19edbdaa74e1c051763514503ec02fb4ff`
 - `OFFICIAL_DOCS_CHECKED: 2026-09-05`
 - `STUDIO_SCOPE: APPLICABLE — deployment and the primary-AI Studio E2E are required`
 - `FRONTEND_SCOPE: APPLICABLE — the Vite frontend reads and writes the frozen Studionet contract`
@@ -53,7 +53,7 @@ At this checkpoint every row is explicitly not run. There is no deployment, tran
 
 ## FRONTEND RPC BUDGET MATRIX
 
-The frontend has one shared `genlayer-js` read client for the configured Studionet chain/contract. Read deduplication is in-flight only; there is no stale persistent cache for transaction state, authorization, balances or verdicts. A write creates a durable journal record before wallet UI and never submits a second transaction for the same authorization/hash. The public transaction indicator is driven by the exact lifecycle phases in `FRONTEND.TRANSACTION_PROGRESS`; a hash is retained through finality, execution and authoritative readback, including storage-degraded reconciliation.
+The frontend has one shared `genlayer-js` read client for the configured Studionet chain/contract. Read deduplication is in-flight only; there is no stale persistent cache for transaction state, authorization, balances or verdicts. A write creates a durable journal record before wallet UI and never submits a second transaction for the same authorization/hash. The coordinator and App enforce one global lifecycle at a time, so write and same-hash reconciliation pollers cannot interleave. The public transaction indicator is driven by the exact lifecycle phases in `FRONTEND.TRANSACTION_PROGRESS`; a hash is retained through finality, execution and authoritative readback, including storage-degraded reconciliation.
 
 | Screen/workflow | Request source | RPC method | Trigger | Cache key / TTL | In-flight dedupe | Invalidation | Poll interval / attempts | Retry/backoff/cancel | Planned maximum | Transaction count | Terminal/readback condition |
 |---|---|---|---|---|---|---|---|---|---:|---:|---|
@@ -64,7 +64,7 @@ The frontend has one shared `genlayer-js` read client for the configured Studion
 | Refresh case for expiry | Shared read client | `gen_call(get_case)` + `eth_getBlockByNumber(latest)` | One explicit Refresh for an expiry-capable phase | Same read key; block read in-flight only | Same-key concurrent refresh shares one promise | Clear after state transition | None | No automatic retry; user can click again | 2 | 0 | Chain-time estimate gates expiry; local clock is informational |
 | Create submission | Selected wallet client + shared read client | SDK nonce/gas/send RPCs; status adapter; `gen_call(get_version)` and optional `get_id_by_nonce` fallback | One explicit Create after backup acknowledgement | No stale write cache | One journal lock; one hash | Clear in-flight reads after finality/before readback | Status probes at 2/4/8 seconds, max 3 | Bounded `Retry-After`/jitter on transient probe failure; abort preserves RECONCILE | 6 logical envelope; provider preflight calls measured separately | 1 | Hash + FINALIZED + FINISHED_WITH_RETURN + exact create record |
 | Case write | Selected wallet client + shared read client | SDK nonce/gas/send RPCs; status adapter; one `gen_call(get_version)` | One explicit Guess/Reveal/Evaluate/Retry/Expire | No stale write cache | One journal lock; one hash | Clear in-flight reads after finality/before readback | Status probes at 2/4/8 seconds, max 3 | Bounded `Retry-After`/jitter; cancellation preserves hash; no resubmit | 5 logical envelope; provider preflight calls measured separately | 1 | Hash + finality + semantic success/error + exact method transition or unchanged pre-state |
-| Same-hash Resume/Reconcile | Shared read client | `gen_getTransactionStatus`/terminal receipt + one `gen_call(get_version)` | One explicit journal action | No persistent cache | Same-key lifecycle/read shares in-flight promise | Clear before readback | One status/receipt probe; no loop; paused while the tab is hidden | No submission; no replacement; lockless mode may read but cannot persist a status mutation | 2 logical calls when terminal | 0 | Exact VERIFIED/FINALIZED_ERROR only after authoritative readback; otherwise RECONCILE |
+| Same-hash Resume/Reconcile | Shared read client | `gen_getTransactionStatus`/terminal receipt + one `gen_call(get_version)` | One explicit journal action | No persistent cache | Same-key lifecycle/read shares in-flight promise; global lifecycle gate permits one poller | Clear before readback | One status/receipt probe; no loop; paused while the tab is hidden | No submission; no replacement; lockless mode may read but cannot persist a status mutation | 2 logical calls when terminal | 0 | Exact VERIFIED/FINALIZED_ERROR only after authoritative readback; otherwise RECONCILE |
 
 Logical write envelopes preserve the approved Stage 2 limit: one submission, at most three lifecycle probes and at most two create or one action readback calls. The physical wallet-provider nonce/gas calls are not hidden: they must be included in exact-release evidence and must not be accompanied by any extra render/effect/retry amplification.
 
@@ -88,4 +88,5 @@ The following is the local evidence available before deployment. It is not a cla
 - A returned hash is stored before verification; no automatic replacement or duplicate submission occurs.
 - Finality, semantic execution success/error and authoritative method-specific readback remain mandatory.
 - Public progress exposes the exact wallet, submission, finality, execution, readback, success, rejection, failure and reconciliation phases; signing disables for the session after a journal lock/storage failure while read/export/reconcile remain available.
+- The journal renders at most four entries per page, keeps all valid/raw entries reachable and exportable, and disables every reconcile control while one write or reconciliation lifecycle is active.
 - Missing or unexplained measurements block `POST_DEPLOY_TEST` and release.
