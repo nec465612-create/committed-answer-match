@@ -7,7 +7,7 @@ reproducible local checks for the current release candidate.
 
 ```text
 PACKAGE_COMMIT: ff2f2ad4a4c8d2995a5efeae57cb8bf2e06b3ad5
-PUBLIC_REPOSITORY_HEAD: bf87ebd57371d66e817b2c7c1465cd33778e2116
+PUBLIC_REPOSITORY_HEAD: 1233c0f2e3c90a3cea8fd6b5afb8418ca228ceba
 CONTRACT_SOURCE_COMMIT: 77a182aa35d661e71facdb183bb6902289e188bd
 CONTRACT_SOURCE_SHA256: 5D770C9EF1C6E58063C4604EA1122AC1DE815D788DE34C89C776A610FEE8C6BC
 CONTRACT_TEST_SHA256: DEFC83A938E0CABCD8EECFCA8B7D199AB49901B8C5F6B511965ECF7E02E0FB9C
@@ -22,7 +22,7 @@ INITIAL_COUNT: 0
 LIFECYCLE: INTENTIONALLY FROZEN
 POST_DEPLOY_DEFECT_POLICY: deploy a new contract and update the frontend address; never upgrade this address
 VERCEL_PROJECT: nec10/frontend
-VERCEL_DEPLOYMENT_ID: dpl_Bmyd5JQMkjrrnDZfGcEuP5nTTyZp
+VERCEL_DEPLOYMENT_ID: dpl_5cUPSphbaUgw5QgnMMW69YDchBVe
 VERCEL_DEPLOYMENT_STATUS: READY
 HOSTED_FRONTEND: https://frontend-psi-kohl-42.vercel.app
 ```
@@ -46,8 +46,11 @@ authoritative readbacks are recorded in the project RPC evidence.
 
 The hosted frontend was deployed from the reviewed frontend source to
 `nec10/frontend`. The deployment is `READY` and responds with HTTP 200 at the
-production alias above. Exact-release browser RPC measurements remain pending
-the hosted frontend E2E gate.
+production alias above. The hosted E2E gate passed with the existing retained
+transaction `0x76d17bdb55bd05f81e67be95569b245f3871ba8958e2fdbfe3af7e2d8dd30fd5`:
+same-hash reconciliation verified `Case #5`, revision `1`, and the journal
+became `Verified`; no second transaction was sent. The wallet picker exposed
+only the detected OKX wallet and used its EIP-6963 icon.
 
 ## Reproducible checks
 
@@ -69,9 +72,10 @@ npm run build
 npm run test:e2e
 ```
 
-Current results: contract tests `13 passed`; frontend tests `69 passed`; local
+Current results: contract tests `13 passed`; frontend tests `75 passed`; local
 Playwright `7 passed`; lint, validation, schema generation and production build
-passed. The build reports only the existing large-bundle warning.
+passed. The hosted same-hash E2E gate also passed. The build reports only the
+existing large-bundle warning.
 
 ## Trust and recovery boundaries
 

@@ -123,8 +123,8 @@ does not verify external facts.
   and bounds retries rather than inventing a result.
 - The current contract is intentionally frozen. A confirmed post-deployment
   contract defect requires a new contract and fresh evidence.
-- Exact-release browser RPC measurements are not claimed until the hosted
-  frontend E2E gate is completed.
+- Physical hosted-UI RPC counts are not claimed because the retained Studio
+  binding exposes no recoverable counter; the hosted same-hash E2E gate passed.
 
 ## GenLayer references
 
