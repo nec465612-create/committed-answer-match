@@ -22,7 +22,7 @@ INITIAL_COUNT: 0
 LIFECYCLE: INTENTIONALLY FROZEN
 POST_DEPLOY_DEFECT_POLICY: deploy a new contract and update the frontend address; never upgrade this address
 VERCEL_PROJECT: nec10/frontend
-VERCEL_DEPLOYMENT_ID: dpl_HtjYq6FBzArSaPvxcuF2cUupwbLr
+VERCEL_DEPLOYMENT_ID: dpl_5v3E697oY8dgAiywDsjemBeLg1mU
 VERCEL_DEPLOYMENT_STATUS: READY
 HOSTED_FRONTEND: https://frontend-psi-kohl-42.vercel.app
 ```
